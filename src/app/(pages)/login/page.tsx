@@ -1,14 +1,16 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import * as yup from 'yup';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Microscope, LogIn, GraduationCap, Briefcase } from 'lucide-react';
+import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from "@/components/ui/card";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {Microscope, LogIn, GraduationCap, Briefcase} from 'lucide-react';
 import Link from 'next/link';
-import { ModeToggle } from "@/components/ModeToggle";
+import {ModeToggle} from "@/components/ModeToggle";
+import {toast} from "sonner"
+
 
 const loginSchema = yup.object().shape({
     email: yup.string().email('Nieprawidłowy format email').required('Email jest wymagany'),
@@ -17,7 +19,7 @@ const loginSchema = yup.object().shape({
 
 const validateLoginData = async (data: { email: string; password: string }) => {
     try {
-        await loginSchema.validate(data, { abortEarly: false });
+        await loginSchema.validate(data, {abortEarly: false});
         console.log('Walidacja zakończona sukcesem');
     } catch (err) {
         if (err instanceof yup.ValidationError) {
@@ -26,16 +28,22 @@ const validateLoginData = async (data: { email: string; password: string }) => {
     }
 };
 
-function LoginForm({ userType }: { userType: 'student' | 'employee' }) {
+function LoginForm({userType}: { userType: 'student' | 'employee' }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
     const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const data = { email, password };
+        const data = {email, password};
         await validateLoginData(data);
 
-        console.log('Logowanie zakończone sukcesem');
+        if (userType === 'student') {
+            toast('Login success');
+            window.location.href = '/student-home';
+        }
+        // if (userType === 'employee') {
+        //     window.location.href = '/welcome-page';
+        // }
     };
 
     return (
@@ -63,7 +71,7 @@ function LoginForm({ userType }: { userType: 'student' | 'employee' }) {
             </div>
             <Button type="submit" className="w-full">
                 Zaloguj się
-                <LogIn className="ml-2 h-4 w-4" />
+                <LogIn className="ml-2 h-4 w-4"/>
             </Button>
         </form>
     );
@@ -76,12 +84,12 @@ export default function LoginPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground p-4">
             <div className="w-full max-w-md">
                 <div className="absolute top-4 right-4">
-                    <ModeToggle />
+                    <ModeToggle/>
                 </div>
                 <Card className="w-full">
                     <CardHeader className="text-center">
                         <div className="flex justify-center mb-4">
-                            <Microscope className="h-12 w-12 text-primary" />
+                            <Microscope className="h-12 w-12 text-primary"/>
                         </div>
                         <CardTitle className="text-3xl font-bold">Witamy w AcadEquip</CardTitle>
                         <CardDescription>
@@ -95,7 +103,7 @@ export default function LoginPage() {
                                 className="flex-1 mr-2"
                                 onClick={() => setUserType('student')}
                             >
-                                <GraduationCap className="mr-2 h-4 w-4" />
+                                <GraduationCap className="mr-2 h-4 w-4"/>
                                 Student
                             </Button>
                             <Button
@@ -103,11 +111,11 @@ export default function LoginPage() {
                                 className="flex-1 ml-2"
                                 onClick={() => setUserType('employee')}
                             >
-                                <Briefcase className="mr-2 h-4 w-4" />
+                                <Briefcase className="mr-2 h-4 w-4"/>
                                 Pracownik
                             </Button>
                         </div>
-                        <LoginForm userType={userType} />
+                        <LoginForm userType={userType}/>
                     </CardContent>
                     <CardFooter className="flex justify-center">
                         <Link href="/forgot-password" className="text-sm text-primary hover:underline">
