@@ -3,20 +3,16 @@
 import React, {useState} from 'react';
 import {toast} from "sonner"
 import {Button} from "@/components/ui/button";
-import {Home, BookOpen, PocketKnife, User, LogOut, DoorOpen} from 'lucide-react';
+import {Home, Users, User, LogOut} from 'lucide-react';
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
 import {ModeToggle} from "@/components/ModeToggle";
 import Link from 'next/link';
-import {StudentItemManagementComponent} from "@/app/(pages)/student-home/student-item-management";
-import {StudentReservationsComponent} from "@/app/(pages)/student-home/student-reservations";
-import {RoomsBookingComponent} from "@/app/(pages)/student-home/room-reservation";
+import {UsersMagnetComponent} from "@/hooks/user-management";
 // import {jwtDecode} from "jwt-decode";
 
 const navItems = [
     {label: 'Home', icon: Home},
-    {label: 'Items', icon: PocketKnife},
-    {label: 'Rooms', icon: DoorOpen},
-    {label: 'My booking', icon: BookOpen},
+    {label: 'Users', icon: Users}
 ];
 
 export default function StudentRentalPage() {
@@ -45,13 +41,9 @@ export default function StudentRentalPage() {
     const renderContent = () => {
         switch (selectedItem) {
             case 'Home':
-                return <div>Welcome to the Academic Equipment Rental System</div>;
-            case 'Items':
-                return <StudentItemManagementComponent/>;
-            case 'My booking':
-                return <StudentReservationsComponent/>;
-            case 'Rooms':
-                return <RoomsBookingComponent/>;
+                return <div>Admin main page</div>;
+            case 'Users':
+                return <UsersMagnetComponent/>;
             default:
                 return <div>Content for {selectedItem}</div>;
         }

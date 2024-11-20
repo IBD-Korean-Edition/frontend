@@ -2,18 +2,16 @@
 
 import React, {useState} from 'react';
 import * as yup from 'yup';
-import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from "@/components/ui/card";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Microscope, LogIn, GraduationCap, Briefcase} from 'lucide-react';
-import Link from 'next/link';
 import {ModeToggle} from "@/components/ModeToggle";
 import {toast} from "sonner"
 
-
 const loginSchema = yup.object().shape({
-    email: yup.string().email('Nieprawidłowy format email').required('Email jest wymagany'),
+    email: yup.string().matches(/^\d{6}$/, 'Podaj 6-cyfrowy indeks').required('Podaj login'),
     password: yup.string().min(8, 'Hasło musi mieć co najmniej 8 znaków').required('Hasło jest wymagane'),
 });
 
@@ -41,19 +39,20 @@ function LoginForm({userType}: { userType: 'student' | 'employee' }) {
             toast('Login success');
             window.location.href = '/student-home';
         }
-        // if (userType === 'employee') {
-        //     window.location.href = '/welcome-page';
-        // }
+        if (userType === 'employee') {
+            toast('Login success');
+            window.location.href = '/welcome-page';
+        }
     };
 
     return (
         <form onSubmit={handleSignIn} className="space-y-4">
             <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Indeks</Label>
                 <Input
                     id="email"
-                    type="email"
-                    placeholder={userType === 'student' ? 'student@university.edu' : 'employee@university.edu'}
+                    type="text"
+                    placeholder="123456"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -117,11 +116,6 @@ export default function LoginPage() {
                         </div>
                         <LoginForm userType={userType}/>
                     </CardContent>
-                    <CardFooter className="flex justify-center">
-                        <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                            Zapomniałeś hasła?
-                        </Link>
-                    </CardFooter>
                 </Card>
             </div>
         </div>
