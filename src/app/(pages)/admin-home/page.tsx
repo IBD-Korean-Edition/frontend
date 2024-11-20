@@ -3,16 +3,22 @@
 import React, {useState} from 'react';
 import {toast} from "sonner"
 import {Button} from "@/components/ui/button";
-import {Home, Users, User, LogOut} from 'lucide-react';
+import {Home, Users, User, LogOut, BuildingIcon, BookOpen, LaptopIcon} from 'lucide-react';
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
 import {ModeToggle} from "@/components/ModeToggle";
 import Link from 'next/link';
 import {UsersMagnetComponent} from "@/hooks/user-management";
+import {FacultyManagement} from "@/app/(pages)/admin-home/faculty-management";
+import {AdminReturnsManagement} from "@/app/(pages)/admin-home/admin-returns-management";
+import {ItemManagement} from "@/app/(pages)/admin-home/item-management";
 // import {jwtDecode} from "jwt-decode";
 
 const navItems = [
     {label: 'Home', icon: Home},
-    {label: 'Users', icon: Users}
+    {label: 'Users', icon: Users},
+    {label: 'Faculty', icon: BuildingIcon},
+    {label: 'Booking', icon: BookOpen},
+    {label: 'Items', icon: LaptopIcon}
 ];
 
 export default function StudentRentalPage() {
@@ -44,6 +50,12 @@ export default function StudentRentalPage() {
                 return <div>Admin main page</div>;
             case 'Users':
                 return <UsersMagnetComponent/>;
+            case 'Faculty':
+                return <FacultyManagement/>;
+            case 'Booking':
+                return <AdminReturnsManagement/>;
+            case 'Items':
+                return <ItemManagement/>;
             default:
                 return <div>Content for {selectedItem}</div>;
         }
