@@ -1,71 +1,57 @@
 'use client'
 
-import React, {useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
 import {Button} from "@/components/ui/button"
-import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter} from "@/components/ui/dialog"
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
-import {BookOpen, Microscope, Zap, FlaskConical, Building2, GraduationCap} from 'lucide-react'
+import {BookOpen, Building2, FlaskConical, GraduationCap, Microscope, Zap} from 'lucide-react'
 import {format} from 'date-fns'
-import {toast} from "sonner";
+import {toast} from "sonner"
 
 type Item = {
     id: number
     name: string
-    quantity: number
-    room: string
-    buildingNumber: string
-    department: string
-    icon: React.ElementType
+    amount: number
+    room_number: string
+    building: string
+    faculty: string
 }
 
-const items: Item[] = [
-    {
-        id: 1,
-        name: "Mikroskop",
-        quantity: 10,
-        room: "Lab 101",
-        buildingNumber: "A1",
-        department: "Biologia",
-        icon: Microscope
-    },
-    {id: 2, name: "Oscyloskop", quantity: 5, room: "Lab 202", buildingNumber: "B2", department: "Fizyka", icon: Zap},
-    {
-        id: 3,
-        name: "Pipeta automatyczna",
-        quantity: 20,
-        room: "Lab 303",
-        buildingNumber: "C3",
-        department: "Chemia",
-        icon: FlaskConical
-    },
-    {
-        id: 4,
-        name: "Spektrofotometr",
-        quantity: 3,
-        room: "Lab 404",
-        buildingNumber: "D4",
-        department: "Biochemia",
-        icon: FlaskConical
-    },
-    {
-        id: 5,
-        name: "Kamera termowizyjna",
-        quantity: 2,
-        room: "Lab 505",
-        buildingNumber: "E5",
-        department: "Inżynieria",
-        icon: Zap
-    },
-]
+const iconMap: { [key: string]: React.ElementType } = {
+    'Mikroskop': Microscope,
+    'Oscyloskop': Zap,
+    'Pipeta automatyczna': FlaskConical,
+    'Spektrofotometr': FlaskConical,
+    'Kamera termowizyjna': Zap,
+}
 
 export function StudentItemManagementComponent() {
+    const [items, setItems] = useState<Item[]>([])
     const [isReservationOpen, setIsReservationOpen] = useState(false)
     const [selectedItem, setSelectedItem] = useState<Item | null>(null)
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
     const [error, setError] = useState('')
+
+    useEffect(() => {
+        fetchAvailableItems()
+    }, [])
+
+    const fetchAvailableItems = async () => {
+        try {
+            const response = await fetch(`http://localhost:8000/student/get_available_items`)
+            if (!response.ok) {
+                throw new Error('Failed to fetch available items')
+            }
+            const data = await response.json()
+            setItems(data.items)
+        } catch (error) {
+            console.error('Error fetching available items:', error)
+            toast.error('Failed to load available items')
+        }
+    }
 
     const handleReserve = (item: Item) => {
         setSelectedItem(item)
@@ -75,7 +61,7 @@ export function StudentItemManagementComponent() {
         setError('')
     }
 
-    const handleSubmitReservation = (e: React.FormEvent) => {
+    const handleSubmitReservation = async (e: React.FormEvent) => {
         e.preventDefault()
         const start = new Date(startDate)
         const end = new Date(endDate)
@@ -91,10 +77,32 @@ export function StudentItemManagementComponent() {
             return
         }
 
-        // Here you would typically send the reservation to your backend
-        toast('Reservation confirmed');
-        console.log(`Rezerwacja dla ${selectedItem?.name} od ${startDate} do ${endDate}`)
-        setIsReservationOpen(false)
+        try {
+            const response = await fetch(`http://localhost:8000/student/rent_item`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    student_id: 1, // Assuming a logged-in student with ID 1
+                    item_id: selectedItem?.id,
+                    start_date: startDate,
+                    end_date: endDate,
+                }),
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || 'Failed to rent item')
+            }
+
+            toast.success('Reservation confirmed')
+            setIsReservationOpen(false)
+            fetchAvailableItems() // Refresh the list of available items
+        } catch (error) {
+            console.error('Error renting item:', error)
+            toast.error((error as Error).message || 'Failed to rent item')
+        }
     }
 
     return (
@@ -117,19 +125,19 @@ export function StudentItemManagementComponent() {
                             <TableRow key={item.id}>
                                 <TableCell className="font-medium">
                                     <div className="flex items-center">
-                                        <item.icon className="mr-2 h-4 w-4"/>
+                                        {React.createElement(iconMap[item.name] || FlaskConical, {className: "mr-2 h-4 w-4"})}
                                         {item.name}
                                     </div>
                                 </TableCell>
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell>{item.room}</TableCell>
+                                <TableCell>{item.amount}</TableCell>
+                                <TableCell>{item.room_number}</TableCell>
                                 <TableCell>
                                     <Building2 className="inline mr-1 h-4 w-4"/>
-                                    {item.buildingNumber}
+                                    {item.building}
                                 </TableCell>
                                 <TableCell>
                                     <GraduationCap className="inline mr-1 h-4 w-4"/>
-                                    {item.department}
+                                    {item.faculty}
                                 </TableCell>
                                 <TableCell>
                                     <Button onClick={() => handleReserve(item)} size="sm">
@@ -189,3 +197,4 @@ export function StudentItemManagementComponent() {
         </div>
     )
 }
+

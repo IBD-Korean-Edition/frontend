@@ -6,42 +6,80 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/compo
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-import {Microscope, LogIn, GraduationCap, Briefcase} from 'lucide-react';
+import {Briefcase, GraduationCap, LogIn, Microscope} from 'lucide-react';
 import {ModeToggle} from "@/components/ModeToggle";
 import {toast} from "sonner"
 
 const loginSchema = yup.object().shape({
-    email: yup.string().matches(/^\d{6}$/, 'Podaj 6-cyfrowy indeks').required('Podaj login'),
+    username: yup.string().matches(/^\d{6}$/, 'Podaj 6-cyfrowy indeks').required('Podaj login'),
     password: yup.string().min(8, 'Hasło musi mieć co najmniej 8 znaków').required('Hasło jest wymagane'),
 });
 
-const validateLoginData = async (data: { email: string; password: string }) => {
+const validateLoginData = async (data: { username: string; password: string }) => {
     try {
         await loginSchema.validate(data, {abortEarly: false});
-        console.log('Walidacja zakończona sukcesem');
+        console.log('Validation successful');
     } catch (err) {
         if (err instanceof yup.ValidationError) {
-            console.error('Błędy walidacji:', err.errors);
+            console.error('Validation errors:', err.errors);
         }
     }
 };
 
 function LoginForm({userType}: { userType: 'student' | 'employee' }) {
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
     const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const data = {email, password};
+        const data = {username: username, password};
         await validateLoginData(data);
 
         if (userType === 'student') {
-            toast('Login success');
-            window.location.href = '/student-home';
+
+            const response = await fetch('http://localhost:8000/student/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (response.status === 200) {
+
+                const body = await response.json();
+                const {csrf_token} = body;
+                sessionStorage.setItem('csrf_student_token', csrf_token);
+                sessionStorage.setItem('student_login' , username);
+
+                toast('Login success');
+                window.location.href = '/student-home';
+            } else {
+                toast('Login failed');
+            }
         }
         if (userType === 'employee') {
-            toast('Login success');
-            window.location.href = '/welcome-page';
+
+            const response = await fetch('http://localhost:8000/admin_paths/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (response.status === 200) {
+
+                const body = await response.json();
+                const {csrf_token} = body;
+                sessionStorage.setItem('csrf_admin_token', csrf_token);
+                sessionStorage.setItem('admin_login' , username);
+
+                toast('Login success');
+                window.location.href = '/admin-home';
+            } else {
+                toast('Login failed');
+            }
         }
     };
 
@@ -53,8 +91,8 @@ function LoginForm({userType}: { userType: 'student' | 'employee' }) {
                     id="email"
                     type="text"
                     placeholder="123456"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                 />
             </div>

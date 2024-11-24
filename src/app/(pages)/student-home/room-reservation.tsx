@@ -1,31 +1,19 @@
 'use client'
 
-import React, { useState } from 'react'
-import { format } from 'date-fns'
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Building2, CalendarDays, DoorClosed, GraduationCap } from 'lucide-react'
-import {Label} from "@/components/ui/label";
-import {Input} from "@/components/ui/input";
-import {toast} from "sonner";
+import React, {useEffect, useState} from 'react'
+import {format} from 'date-fns'
+import {Dialog, DialogContent, DialogHeader, DialogTitle,} from "@/components/ui/dialog"
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table"
+import {Button} from "@/components/ui/button"
+import {Building2, CalendarDays, DoorClosed, GraduationCap} from 'lucide-react'
+import {Label} from "@/components/ui/label"
+import {Input} from "@/components/ui/input"
+import {toast} from "sonner"
 
 interface Room {
     id: number;
-    roomNumber: string;
-    buildingNumber: string;
+    room_number: string;
+    building: string;
     faculty: string;
 }
 
@@ -35,13 +23,25 @@ export function RoomsBookingComponent() {
     const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'))
     const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'))
     const [error, setError] = useState('')
+    const [rooms, setRooms] = useState<Room[]>([])
 
-    const rooms: Room[] = [
-        { id: 1, roomNumber: "101", buildingNumber: "A1", faculty: "Informatyka" },
-        { id: 2, roomNumber: "202", buildingNumber: "B2", faculty: "Matematyka" },
-        { id: 3, roomNumber: "303", buildingNumber: "C3", faculty: "Fizyka" },
-        { id: 4, roomNumber: "404", buildingNumber: "D4", faculty: "Chemia" },
-    ]
+    useEffect(() => {
+        fetchAvailableRooms()
+    }, [])
+
+    const fetchAvailableRooms = async () => {
+        try {
+            const response = await fetch(`http://localhost:8000/student/get_available_rooms/${sessionStorage.getItem('student_login')}`)
+            if (!response.ok) {
+                throw new Error('Failed to fetch available rooms')
+            }
+            const data = await response.json()
+            setRooms(data.rooms)
+        } catch (error) {
+            console.error('Error fetching available rooms:', error)
+            toast.error('Failed to load available rooms')
+        }
+    }
 
     const handleReservation = (room: Room) => {
         setSelectedRoom(room)
@@ -49,7 +49,7 @@ export function RoomsBookingComponent() {
     }
 
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target
+        const {name, value} = e.target
         if (name === 'from') {
             setStartDate(value)
         } else {
@@ -57,7 +57,7 @@ export function RoomsBookingComponent() {
         }
     }
 
-    const handleSubmitReservation = (e: React.FormEvent) => {
+    const handleSubmitReservation = async (e: React.FormEvent) => {
         e.preventDefault()
         const start = new Date(startDate)
         const end = new Date(endDate)
@@ -74,10 +74,33 @@ export function RoomsBookingComponent() {
         }
 
         setError('')
-        setOpen(false)
-        // Here you would typically send the reservation to your backend
-        toast('Reservation confirmed');
-        console.log(`Rezerwacja pokoju ${selectedRoom?.roomNumber} od ${startDate} do ${endDate}`)
+
+        try {
+            const response = await fetch(`http://localhost:8000/student/rent_room`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    student_id: 1, // Assuming a logged-in student with ID 1
+                    room_id: selectedRoom?.id,
+                    start_date: startDate,
+                    end_date: endDate,
+                }),
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || 'Failed to rent room')
+            }
+
+            setOpen(false)
+            toast.success('Reservation confirmed')
+            fetchAvailableRooms() // Refresh the list of available rooms
+        } catch (error) {
+            console.error('Error renting room:', error)
+            toast.error((error as Error).message || 'Failed to rent room')
+        }
     }
 
     return (
@@ -98,13 +121,13 @@ export function RoomsBookingComponent() {
                             <TableCell>
                                 <div className="flex items-center gap-2">
                                     <DoorClosed className="h-5 w-5"/>
-                                    <span>{room.roomNumber}</span>
+                                    <span>{room.room_number}</span>
                                 </div>
                             </TableCell>
                             <TableCell>
                                 <div className="flex items-center gap-2">
                                     <Building2 className="h-5 w-5"/>
-                                    <span>{room.buildingNumber}</span>
+                                    <span>{room.building}</span>
                                 </div>
                             </TableCell>
                             <TableCell>
@@ -130,7 +153,7 @@ export function RoomsBookingComponent() {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>Rezerwacja pokoju {selectedRoom?.roomNumber}</DialogTitle>
+                        <DialogTitle>Rezerwacja pokoju {selectedRoom?.room_number}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmitReservation} className="grid gap-4 py-4">
                         <div className="grid gap-4 py-4">
@@ -140,10 +163,11 @@ export function RoomsBookingComponent() {
                                 </Label>
                                 <Input
                                     id="start-date"
+                                    name="from"
                                     type="date"
                                     className="col-span-3"
                                     value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
+                                    onChange={handleDateChange}
                                     min={format(new Date(), 'yyyy-MM-dd')}
                                     required
                                 />
@@ -154,10 +178,11 @@ export function RoomsBookingComponent() {
                                 </Label>
                                 <Input
                                     id="end-date"
+                                    name="to"
                                     type="date"
                                     className="col-span-3"
                                     value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
+                                    onChange={handleDateChange}
                                     min={startDate || format(new Date(), 'yyyy-MM-dd')}
                                     required
                                 />
@@ -173,3 +198,4 @@ export function RoomsBookingComponent() {
         </div>
     )
 }
+

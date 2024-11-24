@@ -3,7 +3,7 @@
 import React, {useState} from 'react';
 import {toast} from "sonner"
 import {Button} from "@/components/ui/button";
-import {Home, Users, User, LogOut, BuildingIcon, BookOpen, LaptopIcon} from 'lucide-react';
+import {BookOpen, BuildingIcon, Home, LaptopIcon, LogOut, User, Users} from 'lucide-react';
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
 import {ModeToggle} from "@/components/ModeToggle";
 import Link from 'next/link';
@@ -11,7 +11,6 @@ import {UsersMagnetComponent} from "@/hooks/user-management";
 import {FacultyManagement} from "@/app/(pages)/admin-home/faculty-management";
 import {AdminReturnsManagement} from "@/app/(pages)/admin-home/admin-returns-management";
 import {ItemManagement} from "@/app/(pages)/admin-home/item-management";
-// import {jwtDecode} from "jwt-decode";
 
 const navItems = [
     {label: 'Home', icon: Home},
@@ -23,26 +22,6 @@ const navItems = [
 
 export default function StudentRentalPage() {
     const [selectedItem, setSelectedItem] = useState(navItems[0].label);
-
-    // useEffect(() => {
-    //     const token = localStorage.getItem('jwt_accessToken');
-    //     if (!token) {
-    //         window.location.href = '/login';
-    //         return;
-    //     }
-    //
-    //     try {
-    //         const decodedToken = jwtDecode<{ exp: number }>(token);
-    //         if (decodedToken.exp * 1000 < Date.now()) {
-    //             localStorage.removeItem('jwt_accessToken');
-    //             window.location.href = '/login';
-    //         }
-    //     } catch (error) {
-    //         console.error('Error decoding token:', error);
-    //         localStorage.removeItem('jwt_accessToken');
-    //         window.location.href = '/login';
-    //     }
-    // }, []);
 
     const renderContent = () => {
         switch (selectedItem) {

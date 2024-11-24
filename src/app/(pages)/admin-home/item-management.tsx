@@ -1,76 +1,121 @@
 'use client'
 
-import {useState} from 'react'
+import {useEffect, useState} from 'react'
 import {Button} from "@/components/ui/button"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table"
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,} from "@/components/ui/dialog"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
-import {Package, Plus, Trash2, DoorClosed, Building, GraduationCap} from 'lucide-react'
+import {Building, DoorClosed, GraduationCap, Package, Plus, Trash2} from 'lucide-react'
 
 interface Item {
     id: number;
     name: string;
-    quantity: number;
-    roomNumber: string;
-    buildingNumber: string;
+    amount: number;
+    room_id: number;
+    item_owner: string;
+    room_number: string;
+    building_number: string; // Added this line
+    building: string;
     faculty: string;
 }
 
 export function ItemManagement() {
-    const [items, setItems] = useState<Item[]>([
-        {id: 1, name: 'Laptop', quantity: 5, roomNumber: '101', buildingNumber: 'A1', faculty: 'Informatyka'},
-        {id: 2, name: 'Projektor', quantity: 2, roomNumber: '202', buildingNumber: 'B2', faculty: 'Matematyka'},
-    ])
-    const [newItem, setNewItem] = useState<Omit<Item, 'id'>>({
-        name: '',
-        quantity: 0,
-        roomNumber: '',
-        buildingNumber: '',
-        faculty: '',
-    })
+    const [items, setItems] = useState<Item[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [newItem, setNewItem] = useState({
+        name: '',
+        amount: 0,
+        room_id: 0,
+        room_number: '',
+        building_number: '',
+        item_owner: '',
+    })
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const {name, value} = e.target
-        setNewItem(prev => ({...prev, [name]: name === 'quantity' ? parseInt(value) || 0 : value}))
-    }
-
-    const handleAddItem = (e: React.FormEvent) => {
+    const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault()
         if (validateItem(newItem)) {
-            setItems(prev => [...prev, {...newItem, id: Date.now()}])
-            setNewItem({name: '', quantity: 0, roomNumber: '', buildingNumber: '', faculty: ''})
-            setIsDialogOpen(false)
+            try {
+                const body = JSON.stringify({
+                    building_number: newItem.building_number,
+                    room_number: newItem.room_number,
+                    item_owner: newItem.item_owner,
+                    item_name: newItem.name,
+                    item_amount: newItem.amount,
+                    room_id: newItem.room_id
+                })
+
+                console.log(body)
+                const response = await fetch(`http://localhost:8000/admin_paths/add_item`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: body,
+                })
+                if (!response.ok) {
+                    throw new Error('Failed to add item')
+                }
+                await fetchItems()
+                setNewItem({name: '', amount: 0, room_id: 0, room_number: '', building_number: '', item_owner: ''})
+                setIsDialogOpen(false)
+            } catch (error) {
+                console.error('Error adding item:', error)
+                alert('Failed to add item. Please try again.')
+            }
         } else {
-            alert('Proszę wypełnić wszystkie pola poprawnie.')
+            alert('Please fill all fields correctly.')
         }
     }
 
-    const handleDeleteItem = (id: number) => {
-        setItems(prev => prev.filter(item => item.id !== id))
+
+    useEffect(() => {
+        fetchItems()
+    }, [])
+
+    const fetchItems = async () => {
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/get_all_items`)
+            if (!response.ok) {
+                throw new Error('Failed to fetch items')
+            }
+            const data = await response.json()
+            setItems(data.items)
+        } catch (error) {
+            console.error('Error fetching items:', error)
+        }
     }
 
-    const validateItem = (item: Omit<Item, 'id'>): boolean => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const {name, value} = e.target
+        setNewItem(prev => ({
+            ...prev,
+            [name]: name === 'amount' ? parseInt(value) || 0 : value
+        }))
+    }
+
+    const handleDeleteItem = async (id: number) => {
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/delete_item/${id}`, {
+                method: 'DELETE',
+            })
+            if (!response.ok) {
+                throw new Error('Failed to delete item')
+            }
+            await fetchItems()
+        } catch (error) {
+            console.error('Error deleting item:', error)
+            alert('Failed to delete item. Please try again.')
+        }
+    }
+
+    const validateItem = (item: Omit<Item, 'id' | 'building' | 'faculty'>): boolean => {
         return (
             item.name.trim() !== '' &&
-            item.quantity > 0 &&
-            item.roomNumber.trim() !== '' &&
-            item.buildingNumber.trim() !== '' &&
-            item.faculty.trim() !== ''
+            item.amount > 0 &&
+            item.room_number.trim() !== '' &&
+            item.building_number.trim() !== '' &&
+            item.item_owner.trim() !== ''
         )
     }
 
@@ -96,24 +141,24 @@ export function ItemManagement() {
                                        required/>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="quantity">Ilość</Label>
-                                <Input id="quantity" name="quantity" type="number" value={newItem.quantity}
+                                <Label htmlFor="amount">Ilość</Label>
+                                <Input id="amount" name="amount" type="number" value={newItem.amount}
                                        onChange={handleInputChange} required min="1"/>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="roomNumber">Numer Pokoju</Label>
-                                <Input id="roomNumber" name="roomNumber" value={newItem.roomNumber}
+                                <Label htmlFor="building_number">Numer Budynku</Label>
+                                <Input id="building_number" name="building_number" value={newItem.building_number}
                                        onChange={handleInputChange} required/>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="buildingNumber">Numer Budynku</Label>
-                                <Input id="buildingNumber" name="buildingNumber" value={newItem.buildingNumber}
+                                <Label htmlFor="room_number">Numer Pokoju</Label>
+                                <Input id="room_number" name="room_number" value={newItem.room_number}
                                        onChange={handleInputChange} required/>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="faculty">Nazwa Wydziału</Label>
-                                <Input id="faculty" name="faculty" value={newItem.faculty} onChange={handleInputChange}
-                                       required/>
+                                <Label htmlFor="item_owner">Właściciel Przedmiotu</Label>
+                                <Input id="item_owner" name="item_owner" value={newItem.item_owner}
+                                       onChange={handleInputChange} required/>
                             </div>
                             <Button type="submit">Dodaj Przedmiot</Button>
                         </form>
@@ -128,6 +173,7 @@ export function ItemManagement() {
                         <TableHead>Numer Pokoju</TableHead>
                         <TableHead>Numer Budynku</TableHead>
                         <TableHead>Nazwa Wydziału</TableHead>
+                        <TableHead>Właściciel</TableHead>
                         <TableHead className="text-right">Akcje</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -135,30 +181,31 @@ export function ItemManagement() {
                     {items.map((item) => (
                         <TableRow key={item.id}>
                             <TableCell>
-                <span className="flex items-center gap-2">
-                  <Package className="h-4 w-4"/>
-                    {item.name}
-                </span>
+                                <span className="flex items-center gap-2">
+                                    <Package className="h-4 w-4"/>
+                                    {item.name}
+                                </span>
                             </TableCell>
-                            <TableCell>{item.quantity}</TableCell>
+                            <TableCell>{item.amount}</TableCell>
                             <TableCell>
-                <span className="flex items-center gap-2">
-                  <DoorClosed className="h-4 w-4"/>
-                    {item.roomNumber}
-                </span>
-                            </TableCell>
-                            <TableCell>
-                <span className="flex items-center gap-2">
-                  <Building className="h-4 w-4"/>
-                    {item.buildingNumber}
-                </span>
+                                <span className="flex items-center gap-2">
+                                    <DoorClosed className="h-4 w-4"/>
+                                    {item.room_number}
+                                </span>
                             </TableCell>
                             <TableCell>
-                <span className="flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4"/>
-                    {item.faculty}
-                </span>
+                                <span className="flex items-center gap-2">
+                                    <Building className="h-4 w-4"/>
+                                    {item.building}
+                                </span>
                             </TableCell>
+                            <TableCell>
+                                <span className="flex items-center gap-2">
+                                    <GraduationCap className="h-4 w-4"/>
+                                    {item.faculty}
+                                </span>
+                            </TableCell>
+                            <TableCell>{item.item_owner}</TableCell>
                             <TableCell className="text-right">
                                 <Button variant="destructive" size="icon" onClick={() => handleDeleteItem(item.id)}>
                                     <Trash2 className="h-4 w-4"/>
@@ -171,3 +218,4 @@ export function ItemManagement() {
         </div>
     )
 }
+
