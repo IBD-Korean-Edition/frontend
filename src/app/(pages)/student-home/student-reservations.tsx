@@ -3,7 +3,7 @@
 import React, {useEffect, useState} from 'react'
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
-import {Building2, DoorOpen, GraduationCap, Microscope} from 'lucide-react'
+import {Building2, DoorOpen, GraduationCap, Microscope, User} from 'lucide-react'
 import {format} from 'date-fns'
 
 type ReservedRoom = {
@@ -18,11 +18,10 @@ type ReservedRoom = {
 type ReservedItem = {
     id: number
     name: string
-    room_number: string
-    building: string
-    faculty: string
+    student_id: string
     start_date: string
     end_date: string
+    returned: boolean
 }
 
 export function StudentReservationsComponent() {
@@ -48,8 +47,17 @@ export function StudentReservationsComponent() {
                 const roomsData = await roomsResponse.json()
                 const itemsData = await itemsResponse.json()
 
+                console.log(itemsData)
+
                 setReservedRooms(roomsData.rooms)
-                setReservedItems(itemsData.items)
+                setReservedItems(itemsData.items.map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    student_id: item.student_id,
+                    start_date: item.start_date,
+                    end_date: item.end_date,
+                    returned: item.returned
+                })))
             } catch (err) {
                 setError('Failed to load reservations. Please try again later.')
                 console.error('Error fetching reservations:', err)
@@ -125,25 +133,19 @@ export function StudentReservationsComponent() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Nazwa przedmiotu</TableHead>
-                                        <TableHead>Numer pokoju</TableHead>
-                                        <TableHead>Numer budynku</TableHead>
-                                        <TableHead>Wydział</TableHead>
+                                        <TableHead>ID przedmiotu</TableHead>
+                                        <TableHead>ID studenta</TableHead>
                                         <TableHead>Data rezerwacji</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
+
                                     {reservedItems.map((item) => (
                                         <TableRow key={item.id}>
-                                            <TableCell className="font-medium">{item.name}</TableCell>
-                                            <TableCell>{item.room_number}</TableCell>
+                                            <TableCell>{item.name}</TableCell>
                                             <TableCell>
-                                                <Building2 className="inline mr-1 h-4 w-4"/>
-                                                {item.building}
-                                            </TableCell>
-                                            <TableCell>
-                                                <GraduationCap className="inline mr-1 h-4 w-4"/>
-                                                {item.faculty}
+                                                <User className="inline mr-1 h-4 w-4"/>
+                                                {item.student_id}
                                             </TableCell>
                                             <TableCell>
                                                 {format(new Date(item.start_date), 'dd.MM.yyyy')} - {format(new Date(item.end_date), 'dd.MM.yyyy')}
@@ -159,4 +161,3 @@ export function StudentReservationsComponent() {
         </div>
     )
 }
-

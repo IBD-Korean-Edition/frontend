@@ -44,12 +44,12 @@ export function StudentItemManagementComponent() {
     const fetchAvailableItems = async () => {
         try {
             const id = sessionStorage.getItem('student_login')
-            console.log(id)
             const response = await fetch(`http://localhost:8000/student/get_available_items/${id}`)
             if (!response.ok) {
                 throw new Error('Failed to fetch available items')
             }
             const data = await response.json()
+            console.log(data)
             setItems(data.items)
         } catch (error) {
             console.error('Error fetching available items:', error)
@@ -82,17 +82,22 @@ export function StudentItemManagementComponent() {
         }
 
         try {
+            const data = {
+                student_id: sessionStorage.getItem('student_login'),
+                item_id: selectedItem?.id,
+                start_date: startDate,
+                end_date: endDate,
+            };
+
+            const jsonString = JSON.stringify(data);
+            console.log(jsonString);
+
             const response = await fetch(`http://localhost:8000/student/rent_item`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    student_id: 1, // Assuming a logged-in student with ID 1
-                    item_id: selectedItem?.id,
-                    start_date: startDate,
-                    end_date: endDate,
-                }),
+                body: jsonString,
             })
 
             if (!response.ok) {
@@ -208,4 +213,3 @@ export function StudentItemManagementComponent() {
         </div>
     )
 }
-

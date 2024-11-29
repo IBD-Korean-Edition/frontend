@@ -36,6 +36,7 @@ export function RoomsBookingComponent() {
                 throw new Error('Failed to fetch available rooms')
             }
             const data = await response.json()
+            console.log(data)
             setRooms(data.rooms)
         } catch (error) {
             console.error('Error fetching available rooms:', error)
@@ -76,17 +77,23 @@ export function RoomsBookingComponent() {
         setError('')
 
         try {
+
+            const data = {
+                student_id: sessionStorage.getItem('student_login'),
+                room_number: selectedRoom?.room_number,
+                start_date: startDate,
+                end_date: endDate,
+            }
+
+            const jsonString = JSON.stringify(data)
+            console.log(jsonString)
+
             const response = await fetch(`http://localhost:8000/student/rent_room`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    student_id: 1, // Assuming a logged-in student with ID 1
-                    room_id: selectedRoom?.id,
-                    start_date: startDate,
-                    end_date: endDate,
-                }),
+                body: jsonString,
             })
 
             if (!response.ok) {
@@ -198,4 +205,3 @@ export function RoomsBookingComponent() {
         </div>
     )
 }
-

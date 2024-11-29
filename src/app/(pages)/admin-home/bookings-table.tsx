@@ -25,13 +25,20 @@ export function BookingsTable() {
     useEffect(() => {
         const fetchBookings = async () => {
             try {
-                const response = await fetch('http://localhost:8000/admin_paths/bookings')
-                if (!response.ok) {
+                const response1 = await fetch('http://localhost:8000/admin_paths/bookings')
+                if (!response1.ok) {
                     throw new Error('Failed to fetch bookings')
                 }
-                const data = await response.json()
-                console.log(data)
-                setBookings(data.bookings)
+                const data1 = await response1.json()
+                console.log(data1)
+                setBookings(data1.bookings)
+
+                const response2 = await fetch('http://localhost:8000/admin_paths/returned_item_bookings')
+                if (!response2.ok) {
+                    throw new Error('Failed to fetch returned item bookings')
+                }
+                const data2 = await response2.json()
+                console.log(data2)
             } catch (err) {
                 setError('An error occurred while fetching bookings')
             } finally {
@@ -117,4 +124,3 @@ export function BookingsTable() {
         </div>
     )
 }
-

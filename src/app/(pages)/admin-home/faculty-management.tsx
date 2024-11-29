@@ -118,7 +118,8 @@ export function FacultyManagement() {
                 body: JSON.stringify({
                     room_number: newRoom,
                     is_room_for_rent: isRoomForRent,
-                    building_name: selectedBuilding.name
+                    building_name: selectedBuilding.name,
+                    faculty_name: selectedFaculty!.name
                 })
             })
             if (response.ok) {

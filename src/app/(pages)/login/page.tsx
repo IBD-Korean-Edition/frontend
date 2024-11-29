@@ -1,161 +1,215 @@
 'use client'
 
-import React, {useState} from 'react';
-import * as yup from 'yup';
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
-import {Briefcase, GraduationCap, LogIn, Microscope} from 'lucide-react';
-import {ModeToggle} from "@/components/ModeToggle";
+import React, {useEffect, useState} from 'react'
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
+import {Button} from "@/components/ui/button"
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog"
+import {Input} from "@/components/ui/input"
+import {Label} from "@/components/ui/label"
+import {BookOpen, Building2, FlaskConical, GraduationCap, Microscope, Zap} from 'lucide-react'
+import {format} from 'date-fns'
 import {toast} from "sonner"
 
-const loginSchema = yup.object().shape({
-    username: yup.string().matches(/^\d{6}$/, 'Podaj 6-cyfrowy indeks').required('Podaj login'),
-    password: yup.string().min(8, 'Hasło musi mieć co najmniej 8 znaków').required('Hasło jest wymagane'),
-});
-
-const validateLoginData = async (data: { username: string; password: string }) => {
-    try {
-        await loginSchema.validate(data, {abortEarly: false});
-        console.log('Validation successful');
-    } catch (err) {
-        if (err instanceof yup.ValidationError) {
-            console.error('Validation errors:', err.errors);
-        }
-    }
-};
-
-function LoginForm({userType}: { userType: 'student' | 'employee' }) {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-
-    const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const data = {username: username, password};
-        await validateLoginData(data);
-
-        if (userType === 'student') {
-
-            const response = await fetch('http://localhost:8000/student/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
-
-            if (response.status === 200) {
-
-                const body = await response.json();
-                const {csrf_token} = body;
-                sessionStorage.setItem('csrf_student_token', csrf_token);
-                sessionStorage.setItem('student_login' , username);
-
-                toast('Login success');
-                window.location.href = '/student-home';
-            } else {
-                toast('Login failed');
-            }
-        }
-        if (userType === 'employee') {
-
-            const response = await fetch('http://localhost:8000/admin_paths/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data),
-            });
-
-            if (response.status === 200) {
-
-                const body = await response.json();
-                const {csrf_token} = body;
-                sessionStorage.setItem('csrf_admin_token', csrf_token);
-                sessionStorage.setItem('admin_login' , username);
-
-                toast('Login success');
-                window.location.href = '/admin-home';
-            } else {
-                toast('Login failed');
-            }
-        }
-    };
-
-    return (
-        <form onSubmit={handleSignIn} className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="email">Indeks</Label>
-                <Input
-                    id="email"
-                    type="text"
-                    placeholder="123456"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="password">Hasło</Label>
-                <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                />
-            </div>
-            <Button type="submit" className="w-full">
-                Zaloguj się
-                <LogIn className="ml-2 h-4 w-4"/>
-            </Button>
-        </form>
-    );
+type Item = {
+    id: number
+    name: string
+    amount: number
+    type: number
+    attributes: string
+    room_number: string
+    building: string
+    faculty: string
 }
 
-export default function LoginPage() {
-    const [userType, setUserType] = useState<'student' | 'employee'>('student');
+const iconMap: { [key: string]: React.ElementType } = {
+    'Mikroskop': Microscope,
+    'Oscyloskop': Zap,
+    'Pipeta automatyczna': FlaskConical,
+    'Spektrofotometr': FlaskConical,
+    'Kamera termowizyjna': Zap,
+}
+
+export function StudentItemManagementComponent() {
+    const [items, setItems] = useState<Item[]>([])
+    const [isReservationOpen, setIsReservationOpen] = useState(false)
+    const [selectedItem, setSelectedItem] = useState<Item | null>(null)
+    const [startDate, setStartDate] = useState('')
+    const [endDate, setEndDate] = useState('')
+    const [error, setError] = useState('')
+
+    useEffect(() => {
+        fetchAvailableItems()
+    }, [])
+
+    const fetchAvailableItems = async () => {
+        try {
+            const id = sessionStorage.getItem('student_login')
+            const response = await fetch(`http://localhost:8000/student/get_available_items/${id}`)
+            if (!response.ok) {
+                throw new Error('Failed to fetch available items')
+            }
+            const data = await response.json()
+            console.log(data)
+            setItems(data.items)
+        } catch (error) {
+            console.error('Error fetching available items:', error)
+            toast.error('Failed to load available items')
+        }
+    }
+
+    const handleReserve = (item: Item) => {
+        setSelectedItem(item)
+        setIsReservationOpen(true)
+        setStartDate('')
+        setEndDate('')
+        setError('')
+    }
+
+    const handleSubmitReservation = async (e: React.FormEvent) => {
+        e.preventDefault()
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        const now = new Date()
+
+        if (start < now) {
+            setError('Data rozpoczęcia nie może być w przeszłości')
+            return
+        }
+
+        if (end <= start) {
+            setError('Data zakończenia musi być późniejsza niż data rozpoczęcia')
+            return
+        }
+
+        try {
+            const data = {
+                student_id: sessionStorage.getItem('student_login'),
+                item_id: selectedItem?.id,
+                start_date: startDate,
+                end_date: endDate,
+            };
+
+            const jsonString = JSON.stringify(data);
+            console.log(jsonString);
+
+            const response = await fetch(`http://localhost:8000/student/rent_item`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: jsonString,
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.error || 'Failed to rent item')
+            }
+
+            toast.success('Reservation confirmed')
+            setIsReservationOpen(false)
+            fetchAvailableItems() // Refresh the list of available items
+        } catch (error) {
+            console.error('Error renting item:', error)
+            toast.error((error as Error).message || 'Failed to rent item')
+        }
+    }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground p-4">
-            <div className="w-full max-w-md">
-                <div className="absolute top-4 right-4">
-                    <ModeToggle/>
-                </div>
-                <Card className="w-full">
-                    <CardHeader className="text-center">
-                        <div className="flex justify-center mb-4">
-                            <Microscope className="h-12 w-12 text-primary"/>
-                        </div>
-                        <CardTitle className="text-3xl font-bold">Witamy w AcadEquip</CardTitle>
-                        <CardDescription>
-                            Akademicki System Wypożyczania Sprzętu
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex mb-4">
-                            <Button
-                                variant={userType === 'student' ? 'default' : 'outline'}
-                                className="flex-1 mr-2"
-                                onClick={() => setUserType('student')}
-                            >
-                                <GraduationCap className="mr-2 h-4 w-4"/>
-                                Student
-                            </Button>
-                            <Button
-                                variant={userType === 'employee' ? 'default' : 'outline'}
-                                className="flex-1 ml-2"
-                                onClick={() => setUserType('employee')}
-                            >
-                                <Briefcase className="mr-2 h-4 w-4"/>
-                                Pracownik
-                            </Button>
-                        </div>
-                        <LoginForm userType={userType}/>
-                    </CardContent>
-                </Card>
+        <div className="container mx-auto py-10">
+            <h1 className="text-2xl font-bold mb-4">Zarządzanie przedmiotami do rezerwacji</h1>
+            <div className="overflow-x-auto">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Przedmiot</TableHead>
+                            <TableHead>Ilość</TableHead>
+                            <TableHead>Pokój</TableHead>
+                            <TableHead>Numer budynku</TableHead>
+                            <TableHead>Wydział</TableHead>
+                            <TableHead>Typ</TableHead>
+                            <TableHead>Atrybut</TableHead>
+                            <TableHead>Akcja</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {items.map((item) => (
+                            <TableRow key={item.id}>
+                                <TableCell className="font-medium">
+                                    <div className="flex items-center">
+                                        {React.createElement(iconMap[item.name] || FlaskConical, {className: "mr-2 h-4 w-4"})}
+                                        {item.name}
+                                    </div>
+                                </TableCell>
+                                <TableCell>{item.amount}</TableCell>
+                                <TableCell>{item.room_number}</TableCell>
+                                <TableCell>
+                                    <Building2 className="inline mr-1 h-4 w-4"/>
+                                    {item.building}
+                                </TableCell>
+                                <TableCell>
+                                    <GraduationCap className="inline mr-1 h-4 w-4"/>
+                                    {item.faculty}
+                                </TableCell>
+                                <TableCell>
+                                    <FlaskConical className="inline mr-1 h-4 w-4"/>
+                                    {item.type}
+                                </TableCell>
+                                <TableCell>{item.attributes}</TableCell>
+                                <TableCell>
+                                    <Button onClick={() => handleReserve(item)} size="sm">
+                                        <BookOpen className="mr-2 h-4 w-4"/>
+                                        Zarezerwuj
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             </div>
+
+            <Dialog open={isReservationOpen} onOpenChange={setIsReservationOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Zarezerwuj {selectedItem?.name}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmitReservation}>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="start-date" className="text-right">
+                                    Od
+                                </Label>
+                                <Input
+                                    id="start-date"
+                                    type="date"
+                                    className="col-span-3"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    min={format(new Date(), 'yyyy-MM-dd')}
+                                    required
+                                />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="end-date" className="text-right">
+                                    Do
+                                </Label>
+                                <Input
+                                    id="end-date"
+                                    type="date"
+                                    className="col-span-3"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    min={startDate || format(new Date(), 'yyyy-MM-dd')}
+                                    required
+                                />
+                            </div>
+                        </div>
+                        {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+                        <DialogFooter>
+                            <Button type="submit">Potwierdź rezerwację</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
-    );
+    )
 }

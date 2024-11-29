@@ -69,6 +69,8 @@ export function AdminReturnsManagement() {
                 end_date: item.end_date,
             }));
 
+            console.log(updatedItems)
+
             setReservedRooms(roomsData.rooms);
             setReservedItems(updatedItems);
         } catch (error) {
@@ -102,15 +104,23 @@ export function AdminReturnsManagement() {
         }
     }
 
-    const handleItemReturn = async (itemId: number, reservedBy: string) => {
+    const handleItemReturn = async (itemId: string, reservedBy: string) => {
         try {
+
+            const data = {
+                id: itemId,
+                reserved_by: reservedBy
+            }
+
+            const jsonString = JSON.stringify(data)
+            console.log(jsonString)
 
             const response = await fetch(`http://localhost:8000/admin_paths/return_item`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({id: itemId, reserved_by: reservedBy}),
+                body: jsonString,
             })
 
             if (!response.ok) {
@@ -208,7 +218,7 @@ export function AdminReturnsManagement() {
                                     <TableCell>
                         <span className="flex items-center gap-2">
                             <Package className="h-4 w-4"/>
-                            {item.id}
+                            {item.item_id}
                         </span>
                                     </TableCell>
                                     <TableCell>
@@ -224,7 +234,7 @@ export function AdminReturnsManagement() {
                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button onClick={() => handleItemReturn(item.id, item.student_id)}
+                                        <Button onClick={() => handleItemReturn(item.item_id, item.student_id)}
                                                 className="gap-2">
                                             <CheckCircle className="h-4 w-4"/>
                                             Potwierdź Zwrot
@@ -240,4 +250,3 @@ export function AdminReturnsManagement() {
         </div>
     )
 }
-
