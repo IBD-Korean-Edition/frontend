@@ -152,11 +152,23 @@ export function FacultyManagement() {
         }
     }
 
-    const handleRemoveRoom = async (id: number, isRoomForRent: boolean) => {
+    const handleRemoveRoom = async (id: string, isRoomForRent: boolean, building:string, faculty:string) => {
+
+
+        const data = {
+            room_number: id,
+            is_room_for_rent: isRoomForRent,
+            building: building,
+            faculty: faculty
+        }
+
+        const jsonString = JSON.stringify(data)
+        console.log(jsonString)
+
         const response = await fetch(`http://localhost:8000/admin_paths/remove_room`, {
             method: 'DELETE',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({room_id: id, is_room_for_rent: isRoomForRent})
+            body: jsonString
         })
         if (response.ok) {
             fetchBuildings(selectedFaculty!.name)
@@ -366,7 +378,7 @@ export function FacultyManagement() {
                                         <TableCell>{room.is_to_rent ? 'Do wynajęcia' : 'Z przedmiotami'}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="destructive" size="icon"
-                                                    onClick={() => handleRemoveRoom(room.id, room.is_to_rent)}>
+                                                    onClick={() => handleRemoveRoom(room.room_number, room.is_to_rent, room.building, room.faculty)}>
                                                 <Trash2 className="h-4 w-4"/>
                                             </Button>
                                         </TableCell>

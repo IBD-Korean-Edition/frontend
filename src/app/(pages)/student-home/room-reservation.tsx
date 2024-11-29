@@ -83,6 +83,8 @@ export function RoomsBookingComponent() {
                 room_number: selectedRoom?.room_number,
                 start_date: startDate,
                 end_date: endDate,
+                building: selectedRoom?.building,
+                faculty: selectedRoom?.faculty,
             }
 
             const jsonString = JSON.stringify(data)

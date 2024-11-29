@@ -133,8 +133,8 @@ export function StudentReservationsComponent() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>ID przedmiotu</TableHead>
-                                        <TableHead>ID studenta</TableHead>
+                                        <TableHead>Nazwa przedmiotu</TableHead>
+                                        <TableHead>Login studenta</TableHead>
                                         <TableHead>Data rezerwacji</TableHead>
                                     </TableRow>
                                 </TableHeader>

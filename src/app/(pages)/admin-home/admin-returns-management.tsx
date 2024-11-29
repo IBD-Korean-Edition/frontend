@@ -29,6 +29,7 @@ interface ReservedItem {
     student_id: string;
     start_date: string;
     end_date: string;
+    name: string;
 }
 
 
@@ -67,6 +68,7 @@ export function AdminReturnsManagement() {
                 student_id: item.student_id,
                 start_date: item.start_date,
                 end_date: item.end_date,
+                name: item.name
             }));
 
             console.log(updatedItems)
@@ -82,14 +84,19 @@ export function AdminReturnsManagement() {
     };
 
 
-    const handleRoomReturn = async (room_number: string, reservedBy: string) => {
+    const handleRoomReturn = async (room_number: string, reservedBy: string, faculty: string, building: string) => {
         try {
             const response = await fetch(`http://localhost:8000/admin_paths/return_room`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({room_number: room_number, reserved_by: reservedBy}),
+                body: JSON.stringify({
+                    room_number: room_number,
+                    reserved_by: reservedBy,
+                    faculty: faculty,
+                    building: building
+                }),
             })
 
             if (!response.ok) {
@@ -189,8 +196,9 @@ export function AdminReturnsManagement() {
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button onClick={() => handleRoomReturn(room.room_number, room.reserved_by)}
-                                                className="gap-2">
+                                        <Button
+                                            onClick={() => handleRoomReturn(room.room_number, room.reserved_by, room.faculty, room.building)}
+                                            className="gap-2">
                                             <CheckCircle className="h-4 w-4"/>
                                             Potwierdź Zwrot
                                         </Button>
@@ -206,9 +214,9 @@ export function AdminReturnsManagement() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>ID Przedmiotu</TableHead>
-                                <TableHead>ID Studenta</TableHead>
-                                <TableHead>Data Rezerwacji</TableHead>
+                                <TableHead>Nazwa przedmiotu</TableHead>
+                                <TableHead>Login studenta</TableHead>
+                                <TableHead>Zakres rezerwacji</TableHead>
                                 <TableHead className="text-right">Akcje</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -218,7 +226,7 @@ export function AdminReturnsManagement() {
                                     <TableCell>
                         <span className="flex items-center gap-2">
                             <Package className="h-4 w-4"/>
-                            {item.item_id}
+                            {item.name}
                         </span>
                                     </TableCell>
                                     <TableCell>
