@@ -14,6 +14,8 @@ type Item = {
     id: number
     name: string
     amount: number
+    type: number
+    attributes: string
     room_number: string
     building: string
     faculty: string
@@ -41,7 +43,9 @@ export function StudentItemManagementComponent() {
 
     const fetchAvailableItems = async () => {
         try {
-            const response = await fetch(`http://localhost:8000/student/get_available_items`)
+            const id = sessionStorage.getItem('student_login')
+            console.log(id)
+            const response = await fetch(`http://localhost:8000/student/get_available_items/${id}`)
             if (!response.ok) {
                 throw new Error('Failed to fetch available items')
             }
@@ -117,6 +121,8 @@ export function StudentItemManagementComponent() {
                             <TableHead>Pokój</TableHead>
                             <TableHead>Numer budynku</TableHead>
                             <TableHead>Wydział</TableHead>
+                            <TableHead>Typ</TableHead>
+                            <TableHead>Atrybut</TableHead>
                             <TableHead>Akcja</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -139,6 +145,11 @@ export function StudentItemManagementComponent() {
                                     <GraduationCap className="inline mr-1 h-4 w-4"/>
                                     {item.faculty}
                                 </TableCell>
+                                <TableCell>
+                                    <FlaskConical className="inline mr-1 h-4 w-4"/>
+                                    {item.type}
+                                </TableCell>
+                                <TableCell>{item.attributes}</TableCell>
                                 <TableCell>
                                     <Button onClick={() => handleReserve(item)} size="sm">
                                         <BookOpen className="mr-2 h-4 w-4"/>

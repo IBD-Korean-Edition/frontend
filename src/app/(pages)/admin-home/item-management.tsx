@@ -1,48 +1,126 @@
 'use client'
 
-import {useEffect, useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import {Button} from "@/components/ui/button"
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table"
-import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,} from "@/components/ui/dialog"
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger} from "@/components/ui/dialog"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Building, DoorClosed, GraduationCap, Package, Plus, Trash2} from 'lucide-react'
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 
 interface Item {
     id: number;
     name: string;
     amount: number;
     room_id: number;
-    item_owner: string;
     room_number: string;
-    building_number: string; // Added this line
+    building_number: string;
     building: string;
     faculty: string;
+    type: string;
+    attribute: string;
+}
+
+interface Type {
+    id: number;
+    type_name: string;
+}
+
+interface Attribute {
+    id: number;
+    attribute_name: string;
 }
 
 export function ItemManagement() {
     const [items, setItems] = useState<Item[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [types, setTypes] = useState<Type[]>([])
+    const [attributes, setAttributes] = useState<Attribute[]>([])
     const [newItem, setNewItem] = useState({
         name: '',
         amount: 0,
         room_id: 0,
         room_number: '',
         building_number: '',
-        item_owner: '',
+        type: '',
+        attribute: '',
+        faculty: '',
+        building: '',
     })
+
+    useEffect(() => {
+        fetchItems()
+        fetchTypes()
+        fetchAttributes()
+    }, [])
+
+    const fetchItems = async () => {
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/get_all_items`)
+            if (!response.ok) {
+                throw new Error('Failed to fetch items')
+            }
+            const data = await response.json()
+
+            const updatedItems = data.items.map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                amount: item.amount,
+                type: item.type,
+                room_number: item.room_number,
+                attribute: item.attribute,
+                user: item.user,
+                building: item.building,
+                faculty: item.faculty
+            }))
+
+            console.log(updatedItems)
+
+            setItems(updatedItems)
+        } catch (error) {
+            console.error('Error fetching items:', error)
+        }
+    }
+
+    const fetchTypes = async () => {
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/types`)
+            if (!response.ok) {
+                throw new Error('Failed to fetch types')
+            }
+            const data = await response.json()
+            setTypes(data.types)
+        } catch (error) {
+            console.error('Error fetching types:', error)
+        }
+    }
+
+    const fetchAttributes = async () => {
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/attributes`)
+            if (!response.ok) {
+                throw new Error('Failed to fetch attributes')
+            }
+            const data = await response.json()
+            setAttributes(data.attributes)
+        } catch (error) {
+            console.error('Error fetching attributes:', error)
+        }
+    }
 
     const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault()
         if (validateItem(newItem)) {
             try {
                 const body = JSON.stringify({
-                    building_number: newItem.building_number,
-                    room_number: newItem.room_number,
-                    item_owner: newItem.item_owner,
-                    item_name: newItem.name,
-                    item_amount: newItem.amount,
-                    room_id: newItem.room_id
+                    name: newItem.name,
+                    amount: newItem.amount,
+                    room_with_items: newItem.room_number,
+                    type: newItem.type,
+                    attribute: newItem.attribute,
+                    faculty: newItem.faculty,
+                    building: newItem.building_number,
                 })
 
                 console.log(body)
@@ -57,7 +135,10 @@ export function ItemManagement() {
                     throw new Error('Failed to add item')
                 }
                 await fetchItems()
-                setNewItem({name: '', amount: 0, room_id: 0, room_number: '', building_number: '', item_owner: ''})
+                setNewItem({
+                    name: '', amount: 0, room_id: 0, room_number: '', building_number: '',
+                    type: '', attribute: '', faculty: '', building: ''
+                })
                 setIsDialogOpen(false)
             } catch (error) {
                 console.error('Error adding item:', error)
@@ -68,25 +149,9 @@ export function ItemManagement() {
         }
     }
 
-
-    useEffect(() => {
-        fetchItems()
-    }, [])
-
-    const fetchItems = async () => {
-        try {
-            const response = await fetch(`http://localhost:8000/admin_paths/get_all_items`)
-            if (!response.ok) {
-                throw new Error('Failed to fetch items')
-            }
-            const data = await response.json()
-            setItems(data.items)
-        } catch (error) {
-            console.error('Error fetching items:', error)
-        }
-    }
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement> | {
+        target: { name: string; value: string }
+    }) => {
         const {name, value} = e.target
         setNewItem(prev => ({
             ...prev,
@@ -109,13 +174,15 @@ export function ItemManagement() {
         }
     }
 
-    const validateItem = (item: Omit<Item, 'id' | 'building' | 'faculty'>): boolean => {
+    const validateItem = (item: Omit<Item, 'id'>): boolean => {
         return (
             item.name.trim() !== '' &&
             item.amount > 0 &&
             item.room_number.trim() !== '' &&
             item.building_number.trim() !== '' &&
-            item.item_owner.trim() !== ''
+            item.type.trim() !== '' &&
+            item.attribute.trim() !== '' &&
+            item.faculty.trim() !== ''
         )
     }
 
@@ -156,9 +223,43 @@ export function ItemManagement() {
                                        onChange={handleInputChange} required/>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="item_owner">Właściciel Przedmiotu</Label>
-                                <Input id="item_owner" name="item_owner" value={newItem.item_owner}
-                                       onChange={handleInputChange} required/>
+                                <Label htmlFor="type">Typ</Label>
+                                <Select name="type"
+                                        onValueChange={(value) => handleInputChange({target: {name: 'type', value}})}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Wybierz typ"/>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {types.map((type) => (
+                                            <SelectItem key={type.id}
+                                                        value={type.type_name}>{type.type_name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="attribute">Atrybut</Label>
+                                <Select name="attribute" onValueChange={(value) => handleInputChange({
+                                    target: {
+                                        name: 'attribute',
+                                        value
+                                    }
+                                })}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Wybierz atrybut"/>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {attributes.map((attr) => (
+                                            <SelectItem key={attr.id}
+                                                        value={attr.attribute_name}>{attr.attribute_name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="faculty">Wydział</Label>
+                                <Input id="faculty" name="faculty" value={newItem.faculty} onChange={handleInputChange}
+                                       required/>
                             </div>
                             <Button type="submit">Dodaj Przedmiot</Button>
                         </form>
@@ -173,7 +274,8 @@ export function ItemManagement() {
                         <TableHead>Numer Pokoju</TableHead>
                         <TableHead>Numer Budynku</TableHead>
                         <TableHead>Nazwa Wydziału</TableHead>
-                        <TableHead>Właściciel</TableHead>
+                        <TableHead>Typ</TableHead>
+                        <TableHead>Atrybut</TableHead>
                         <TableHead className="text-right">Akcje</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -181,31 +283,32 @@ export function ItemManagement() {
                     {items.map((item) => (
                         <TableRow key={item.id}>
                             <TableCell>
-                                <span className="flex items-center gap-2">
-                                    <Package className="h-4 w-4"/>
-                                    {item.name}
-                                </span>
+                <span className="flex items-center gap-2">
+                  <Package className="h-4 w-4"/>
+                    {item.name}
+                </span>
                             </TableCell>
                             <TableCell>{item.amount}</TableCell>
                             <TableCell>
-                                <span className="flex items-center gap-2">
-                                    <DoorClosed className="h-4 w-4"/>
-                                    {item.room_number}
-                                </span>
+                <span className="flex items-center gap-2">
+                  <DoorClosed className="h-4 w-4"/>
+                    {item.room_number}
+                </span>
                             </TableCell>
                             <TableCell>
-                                <span className="flex items-center gap-2">
-                                    <Building className="h-4 w-4"/>
-                                    {item.building}
-                                </span>
+                <span className="flex items-center gap-2">
+                  <Building className="h-4 w-4"/>
+                    {item.building}
+                </span>
                             </TableCell>
                             <TableCell>
-                                <span className="flex items-center gap-2">
-                                    <GraduationCap className="h-4 w-4"/>
-                                    {item.faculty}
-                                </span>
+                <span className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4"/>
+                    {item.faculty}
+                </span>
                             </TableCell>
-                            <TableCell>{item.item_owner}</TableCell>
+                            <TableCell>{item.type}</TableCell>
+                            <TableCell>{item.attribute}</TableCell>
                             <TableCell className="text-right">
                                 <Button variant="destructive" size="icon" onClick={() => handleDeleteItem(item.id)}>
                                     <Trash2 className="h-4 w-4"/>

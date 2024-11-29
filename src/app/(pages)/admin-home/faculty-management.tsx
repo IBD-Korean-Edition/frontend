@@ -2,8 +2,8 @@
 
 import {ChangeEvent, FormEvent, useEffect, useState} from 'react'
 import {Button} from "@/components/ui/button"
-import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,} from "@/components/ui/dialog"
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table"
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger} from "@/components/ui/dialog"
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Building, DoorClosed, GraduationCap, PlusCircle, Trash2} from 'lucide-react'
@@ -13,43 +13,50 @@ interface Faculty {
     name: string;
 }
 
+interface Room {
+    id: number;
+    room_number: string;
+    is_to_rent: boolean;
+    building: string;
+    faculty: string;
+}
+
 interface Building {
     id: number;
     name: string;
-}
-
-interface Room {
-    id: number;
-    number: string;
-    type: boolean;
+    RoomToRent: Room[];
+    RoomWithItems: Room[];
 }
 
 export function FacultyManagement() {
     const [faculties, setFaculties] = useState<Faculty[]>([])
     const [buildings, setBuildings] = useState<Building[]>([])
     const [rooms, setRooms] = useState<Room[]>([])
-    const [selectedFaculty, setSelectedFaculty] = useState<string | null>(null)
-    const [selectedBuilding, setSelectedBuilding] = useState<string | null>(null)
+    const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null)
+    const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
+    const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
     const [newFaculty, setNewFaculty] = useState('')
     const [newBuilding, setNewBuilding] = useState('')
     const [newRoom, setNewRoom] = useState('')
     const [isRoomForRent, setIsRoomForRent] = useState(false)
+    const [openDialogs, setOpenDialogs] = useState({faculty: false, building: false, room: false});
+    const [isLoading, setIsLoading] = useState({faculties: false, buildings: false, rooms: false});
+
 
     useEffect(() => {
+        setIsLoading({...isLoading, faculties: true})
         fetchFaculties()
     }, [])
 
     useEffect(() => {
         if (selectedFaculty) {
-            fetchBuildings(selectedFaculty)
+            setIsLoading((prev) => ({...prev, buildings: true}));
+            fetchBuildings(selectedFaculty.name);
+        } else {
+            setBuildings([]);
+            setSelectedBuilding(null);
         }
     }, [selectedFaculty])
-
-    useEffect(() => {
-        if (selectedBuilding) {
-            fetchRooms(selectedBuilding)
-        }
-    }, [selectedBuilding])
 
     const fetchFaculties = async () => {
         const response = await fetch(`http://localhost:8000/admin_paths/get_all_faculty`, {
@@ -58,26 +65,28 @@ export function FacultyManagement() {
         })
         const data = await response.json()
         setFaculties(data.faculties)
+        setIsLoading({...isLoading, faculties: false})
     }
 
     const fetchBuildings = async (facultyName: string) => {
-        const response = await fetch(`http://localhost:8000/admin_paths/get_buildings_by_faculty/${facultyName}/`)
+        const response = await fetch(`http://localhost:8000/admin_paths/get_buildings_by_faculty/${facultyName}`)
         const data = await response.json()
-        setBuildings(data.buildings)
-    }
-
-    const fetchRooms = async (buildingName: string) => {
-        const response = await fetch(`http://localhost:8000/admin_paths/get_rooms_by_building/${buildingName}/`)
-        const data = await response.json()
-        setRooms(data.rooms)
+        const buildingsWithRooms = data.buildings.map((building: any) => ({
+            id: building.id,
+            name: building.name,
+            RoomToRent: building.RoomToRent,
+            RoomWithItems: building.RoomWithItems
+        }))
+        setBuildings(buildingsWithRooms)
+        setIsLoading({...isLoading, buildings: false})
     }
 
     const handleAddFaculty = async (e: FormEvent) => {
         e.preventDefault()
-        const response = await fetch(`http://localhost:8000/admin_paths/add_faculity`, {
+        const response = await fetch(`http://localhost:8000/admin_paths/add_faculty`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({faculty_name: newFaculty, admin_username: sessionStorage.getItem('admin_login')}) // Assuming admin username
+            body: JSON.stringify({faculty_name: newFaculty})
         })
         if (response.ok) {
             fetchFaculties()
@@ -91,10 +100,10 @@ export function FacultyManagement() {
             const response = await fetch(`http://localhost:8000/admin_paths/add_building`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({building_name: newBuilding, faculty_name: selectedFaculty})
+                body: JSON.stringify({building_name: newBuilding, faculty_name: selectedFaculty.name})
             })
             if (response.ok) {
-                fetchBuildings(selectedFaculty)
+                fetchBuildings(selectedFaculty.name)
                 setNewBuilding('')
             }
         }
@@ -109,11 +118,11 @@ export function FacultyManagement() {
                 body: JSON.stringify({
                     room_number: newRoom,
                     is_room_for_rent: isRoomForRent,
-                    building_name: selectedBuilding
+                    building_name: selectedBuilding.name
                 })
             })
             if (response.ok) {
-                fetchRooms(selectedBuilding)
+                fetchBuildings(selectedFaculty!.name)
                 setNewRoom('')
             }
         }
@@ -123,7 +132,7 @@ export function FacultyManagement() {
         const response = await fetch(`http://localhost:8000/admin_paths/delete_faculty/${id}`, {method: 'DELETE'})
         if (response.ok) {
             fetchFaculties()
-            if (selectedFaculty === faculties.find(f => f.id === id)?.name) {
+            if (selectedFaculty?.id === id) {
                 setSelectedFaculty(null)
             }
         }
@@ -135,8 +144,8 @@ export function FacultyManagement() {
             headers: {'Content-Type': 'application/json'},
         })
         if (response.ok) {
-            fetchBuildings(selectedFaculty!)
-            if (selectedBuilding === buildings.find(b => b.id === id)?.name) {
+            fetchBuildings(selectedFaculty!.name)
+            if (selectedBuilding?.id === id) {
                 setSelectedBuilding(null)
             }
         }
@@ -149,9 +158,19 @@ export function FacultyManagement() {
             body: JSON.stringify({room_id: id, is_room_for_rent: isRoomForRent})
         })
         if (response.ok) {
-            fetchRooms(selectedBuilding!)
+            fetchBuildings(selectedFaculty!.name)
         }
     }
+
+    const handleFacultySelect = (faculty: Faculty) => {
+        setSelectedFaculty(faculty);
+        setSelectedBuilding(null);
+    };
+
+    const handleBuildingSelect = (building: Building) => {
+        setSelectedBuilding(building);
+        setRooms([...building.RoomToRent, ...building.RoomWithItems])
+    };
 
     return (
         <div className="container mx-auto py-10">
@@ -159,7 +178,8 @@ export function FacultyManagement() {
                 <div>
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold">Wydziały</h2>
-                        <Dialog>
+                        <Dialog open={openDialogs.faculty}
+                                onOpenChange={(open) => setOpenDialogs((prev) => ({...prev, faculty: open}))}>
                             <DialogTrigger asChild>
                                 <Button className="gap-2">
                                     <PlusCircle className="h-4 w-4"/>
@@ -185,39 +205,43 @@ export function FacultyManagement() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Nazwa</TableHead>
-                                <TableHead className="text-right">Akcje</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {faculties.map((faculty) => (
-                                <TableRow key={faculty.id}
-                                          className={selectedFaculty === faculty.name ? 'bg-muted' : ''}>
-                                    <TableCell className="font-medium">
-                                        <Button variant="ghost" className="w-full justify-start gap-2"
-                                                onClick={() => setSelectedFaculty(faculty.name)}>
-                                            <GraduationCap className="h-4 w-4"/>
-                                            {faculty.name}
-                                        </Button>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="destructive" size="icon"
-                                                onClick={() => handleRemoveFaculty(faculty.id)}>
-                                            <Trash2 className="h-4 w-4"/>
-                                        </Button>
-                                    </TableCell>
+                    <div
+                        className={`transition-opacity duration-300 ${isLoading.faculties ? 'opacity-50' : 'opacity-100'}`}>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Nazwa</TableHead>
+                                    <TableHead className="text-right">Akcje</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {faculties.map((faculty) => (
+                                    <TableRow key={faculty.id}
+                                              className={selectedFaculty?.id === faculty.id ? 'bg-muted' : ''}>
+                                        <TableCell className="font-medium">
+                                            <Button variant="ghost" className="w-full justify-start gap-2"
+                                                    onClick={() => handleFacultySelect(faculty)}>
+                                                <GraduationCap className="h-4 w-4"/>
+                                                {faculty.name}
+                                            </Button>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="destructive" size="icon"
+                                                    onClick={() => handleRemoveFaculty(faculty.id)}>
+                                                <Trash2 className="h-4 w-4"/>
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
                 <div>
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold">Budynki</h2>
-                        <Dialog>
+                        <Dialog open={openDialogs.building}
+                                onOpenChange={(open) => setOpenDialogs((prev) => ({...prev, building: open}))}>
                             <DialogTrigger asChild>
                                 <Button className="gap-2" disabled={!selectedFaculty}>
                                     <PlusCircle className="h-4 w-4"/>
@@ -243,39 +267,43 @@ export function FacultyManagement() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Nazwa</TableHead>
-                                <TableHead className="text-right">Akcje</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {buildings.map((building) => (
-                                <TableRow key={building.id}
-                                          className={selectedBuilding === building.name ? 'bg-muted' : ''}>
-                                    <TableCell className="font-medium">
-                                        <Button variant="ghost" className="w-full justify-start gap-2"
-                                                onClick={() => setSelectedBuilding(building.name)}>
-                                            <Building className="h-4 w-4"/>
-                                            {building.name}
-                                        </Button>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="destructive" size="icon"
-                                                onClick={() => handleRemoveBuilding(building.id)}>
-                                            <Trash2 className="h-4 w-4"/>
-                                        </Button>
-                                    </TableCell>
+                    <div
+                        className={`transition-opacity duration-300 ${isLoading.buildings ? 'opacity-50' : 'opacity-100'}`}>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Nazwa</TableHead>
+                                    <TableHead className="text-right">Akcje</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {buildings.map((building) => (
+                                    <TableRow key={building.id}
+                                              className={selectedBuilding?.id === building.id ? 'bg-muted' : ''}>
+                                        <TableCell className="font-medium">
+                                            <Button variant="ghost" className="w-full justify-start gap-2"
+                                                    onClick={() => handleBuildingSelect(building)}>
+                                                <Building className="h-4 w-4"/>
+                                                {building.name}
+                                            </Button>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="destructive" size="icon"
+                                                    onClick={() => handleRemoveBuilding(building.id)}>
+                                                <Trash2 className="h-4 w-4"/>
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
                 <div>
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold">Pokoje</h2>
-                        <Dialog>
+                        <Dialog open={openDialogs.room}
+                                onOpenChange={(open) => setOpenDialogs((prev) => ({...prev, room: open}))}>
                             <DialogTrigger asChild>
                                 <Button className="gap-2" disabled={!selectedBuilding}>
                                     <PlusCircle className="h-4 w-4"/>
@@ -313,37 +341,41 @@ export function FacultyManagement() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Numer</TableHead>
-                                <TableHead>Typ</TableHead>
-                                <TableHead className="text-right">Akcje</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rooms.map((room) => (
-                                <TableRow key={room.id}>
-                                    <TableCell className="font-medium">
-                                        <span className="flex items-center gap-2">
-                                            <DoorClosed className="h-4 w-4"/>
-                                            {room.number}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>{room.type ? 'Do wynajęcia' : 'Z przedmiotami'}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="destructive" size="icon"
-                                                onClick={() => handleRemoveRoom(room.id, room.type)}>
-                                            <Trash2 className="h-4 w-4"/>
-                                        </Button>
-                                    </TableCell>
+                    <div
+                        className={`transition-opacity duration-300 ${isLoading.rooms ? 'opacity-50' : 'opacity-100'}`}>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Numer</TableHead>
+                                    <TableHead>Typ</TableHead>
+                                    <TableHead className="text-right">Akcje</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {rooms.map((room) => (
+                                    <TableRow key={room.id}
+                                              className={selectedRoom?.id === room.id ? 'bg-muted' : ''}>
+                                        <TableCell className="font-medium">
+                                            <Button variant="ghost" className="w-full justify-start gap-2"
+                                                    onClick={() => setSelectedRoom(room)}>
+                                                <DoorClosed className="h-4 w-4"/>
+                                                {room.room_number}
+                                            </Button>
+                                        </TableCell>
+                                        <TableCell>{room.is_to_rent ? 'Do wynajęcia' : 'Z przedmiotami'}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="destructive" size="icon"
+                                                    onClick={() => handleRemoveRoom(room.id, room.is_to_rent)}>
+                                                <Trash2 className="h-4 w-4"/>
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
             </div>
         </div>
     )
 }
-

@@ -71,15 +71,16 @@ export function UsersMagnetComponent() {
 
     const handleAddAdmin = (e: FormEvent) => {
         e.preventDefault()
-
-        console.log(sessionStorage.getItem('csrf_admin_token'));
-
+        const studentData = {
+            username: newAdmin.login,
+            password: newAdmin.password
+        }
         fetch('http://localhost:8000/admin_paths/add_admin', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(newAdmin)
+            body: JSON.stringify(studentData)
         })
             .then(response => {
                 if (response.status === 401 || response.status === 403) {

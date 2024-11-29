@@ -11,13 +11,18 @@ import {UsersMagnetComponent} from "@/hooks/user-management";
 import {FacultyManagement} from "@/app/(pages)/admin-home/faculty-management";
 import {AdminReturnsManagement} from "@/app/(pages)/admin-home/admin-returns-management";
 import {ItemManagement} from "@/app/(pages)/admin-home/item-management";
+import {flowStartParseAsyncArrowFromCallExpression} from "sucrase/dist/types/parser/plugins/flow";
+import {BookingsTable} from "@/app/(pages)/admin-home/bookings-table";
+import {TypesAndAttributesTables} from "@/app/(pages)/admin-home/types-and-attributes-tables";
 
 const navItems = [
     {label: 'Home', icon: Home},
     {label: 'Users', icon: Users},
     {label: 'Faculty', icon: BuildingIcon},
     {label: 'Booking', icon: BookOpen},
-    {label: 'Items', icon: LaptopIcon}
+    {label: 'Items', icon: LaptopIcon},
+    {label: 'Booking history', icon: LaptopIcon},
+    {label: 'Types and Attribute', icon: LaptopIcon}
 ];
 
 export default function StudentRentalPage() {
@@ -35,6 +40,10 @@ export default function StudentRentalPage() {
                 return <AdminReturnsManagement/>;
             case 'Items':
                 return <ItemManagement/>;
+            case 'Booking history':
+                return <BookingsTable/>;
+            case 'Types and Attribute':
+                return <TypesAndAttributesTables/>;
             default:
                 return <div>Content for {selectedItem}</div>;
         }
