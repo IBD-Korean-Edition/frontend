@@ -36,7 +36,6 @@ export function RoomsBookingComponent() {
                 throw new Error('Failed to fetch available rooms')
             }
             const data = await response.json()
-            console.log(data)
             setRooms(data.rooms)
         } catch (error) {
             console.error('Error fetching available rooms:', error)
@@ -98,14 +97,17 @@ export function RoomsBookingComponent() {
                 body: jsonString,
             })
 
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || 'Failed to rent room')
+            const responseJson = await response.json()
+
+            if (response.ok) {
+                setOpen(false)
+                await fetchAvailableRooms()
+                toast.success(responseJson.message || 'Room rented successfully')
+
+            }else {
+                toast.error(responseJson.error || 'Failed to rent room')
             }
 
-            setOpen(false)
-            toast.success('Reservation confirmed')
-            fetchAvailableRooms() // Refresh the list of available rooms
         } catch (error) {
             console.error('Error renting room:', error)
             toast.error((error as Error).message || 'Failed to rent room')

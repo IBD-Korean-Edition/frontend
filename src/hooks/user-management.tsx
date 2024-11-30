@@ -1,14 +1,14 @@
 'use client'
 
-import {ChangeEvent, FormEvent, useEffect, useState} from 'react'
+import {ChangeEvent, FormEvent, useEffect, useState, useCallback} from 'react'
 import {Button} from "@/components/ui/button"
-import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,} from "@/components/ui/dialog"
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table"
+import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger} from "@/components/ui/dialog"
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Switch} from "@/components/ui/switch"
 import {Trash2, UserPlus} from 'lucide-react'
-import {toast} from "sonner";
+import {toast} from "sonner"
 
 interface Admin {
     id: number
@@ -28,105 +28,114 @@ export function UsersMagnetComponent() {
     const [students, setStudents] = useState<Student[]>([])
     const [newAdmin, setNewAdmin] = useState<Partial<Admin>>({login: '', password: '', isSuperAdmin: false})
     const [newStudent, setNewStudent] = useState<Partial<Student>>({login: '', password: ''})
+    const [shouldRefresh, setShouldRefresh] = useState(false)
+
+    const fetchData = useCallback(async () => {
+        try {
+            const adminResponse = await fetch(`http://localhost:8000/admin_paths/get_all_admins/${sessionStorage.getItem('admin_login')}`)
+            const adminData = await adminResponse.json()
+            if (adminData.admins && Array.isArray(adminData.admins)) {
+                const mappedAdmins = adminData.admins.map((admin: { id: any; login: any; super_admin: any }) => ({
+                    id: admin.id,
+                    login: admin.login,
+                    password: '',
+                    isSuperAdmin: admin.super_admin
+                }))
+                setAdmins(mappedAdmins)
+            }
+
+            const studentResponse = await fetch('http://localhost:8000/admin_paths/get_all_students')
+            const studentData = await studentResponse.json()
+            if (studentData.students && Array.isArray(studentData.students)) {
+                setStudents(studentData.students)
+            }
+        } catch (error) {
+            console.error('Fetch error:', error)
+            toast.error('Nie udało się załadować danych')
+        }
+    }, [])
 
     useEffect(() => {
-        fetch(`http://localhost:8000/admin_paths/get_all_admins/${sessionStorage.getItem('admin_login')}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.admins && Array.isArray(data.admins)) {
-                    const mappedAdmins = data.admins.map((admin: { id: any; login: any; super_admin: any }) => ({
-                        id: admin.id,
-                        login: admin.login,
-                        password: '', // Assuming password is not returned for security reasons
-                        isSuperAdmin: admin.super_admin
-                    }));
-                    setAdmins(mappedAdmins);
-                } else {
-                    console.error('Expected "admins" to be an array in the response');
-                }
-            })
-            .catch(error => console.error('Fetch error for admins:', error));
+        fetchData()
+    }, [fetchData, shouldRefresh])
 
-        fetch('http://localhost:8000/admin_paths/get_all_students')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.students && Array.isArray(data.students)) {
-                    setStudents(data.students);
-                } else {
-                    console.error('Expected "students" to be an array in the response');
-                }
-            })
-            .catch(error => console.error('Fetch error for students:', error));
-    }, []);
-
-    const handleAddAdmin = (e: FormEvent) => {
+    const handleAddAdmin = async (e: FormEvent) => {
         e.preventDefault()
-        const studentData = {
+        const adminData = {
             username: newAdmin.login,
             password: newAdmin.password
         }
-        fetch('http://localhost:8000/admin_paths/add_admin', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(studentData)
-        })
-            .then(response => {
-                if (response.status === 401 || response.status === 403) {
-                    toast.error('Unauthorized');
-                    return;
-                }
-                return response.json();
+        try {
+            const response = await fetch('http://localhost:8000/admin_paths/add_admin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(adminData)
             })
-            .then(data => {
-                if (data) {
-                    setAdmins([...admins, data]);
-                    setNewAdmin({login: '', password: '', isSuperAdmin: false});
-                }
-            })
-            .catch(error => console.error('Error:', error));
+            if (response.status === 401 || response.status === 403) {
+                toast.error('Brak uprawnień')
+                return
+            }
+            const data = await response.json()
+            if (data) {
+                setNewAdmin({login: '', password: '', isSuperAdmin: false})
+                toast.success('Administrator dodany pomyślnie')
+                setShouldRefresh(prev => !prev)
+            }
+        } catch (error) {
+            console.error('Error:', error)
+            toast.error('Nie udało się dodać administratora')
+        }
     }
 
-    const handleAddStudent = (e: FormEvent) => {
+    const handleAddStudent = async (e: FormEvent) => {
         e.preventDefault()
         const studentData = {
             username: newStudent.login,
             password: newStudent.password
         }
-        fetch('http://localhost:8000/admin_paths/add_student', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(studentData)
-        })
-            .then(response => response.json())
-            .then(data => setStudents([...students, data]))
-        setNewStudent({login: '', password: ''})
+        try {
+            await fetch('http://localhost:8000/admin_paths/add_student', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(studentData)
+            })
+            setNewStudent({login: '', password: ''})
+            toast.success('Student dodany pomyślnie')
+            setShouldRefresh(prev => !prev)
+        } catch (error) {
+            console.error('Error:', error)
+            toast.error('Nie udało się dodać studenta')
+        }
     }
 
-    const handleRemoveAdmin = (id: number) => {
-        fetch(`http://localhost:8000/admin_paths/delete_admin/${id}`, {method: 'DELETE'})
-            .then(() => setAdmins(admins.filter(admin => admin.id !== id)))
+    const handleRemoveAdmin = async (id: number) => {
+        try {
+            await fetch(`http://localhost:8000/admin_paths/delete_admin/${id}`, {method: 'DELETE'})
+            toast.success('Administrator usunięty pomyślnie')
+            setShouldRefresh(prev => !prev)
+        } catch (error) {
+            console.error('Error:', error)
+            toast.error('Nie udało się usunąć administratora')
+        }
     }
 
-    const handleRemoveStudent = (id: number) => {
-        fetch(`http://localhost:8000/admin_paths/delete_student/${id}`, {method: 'DELETE'})
-            .then(() => setStudents(students.filter(student => student.id !== id)))
+    const handleRemoveStudent = async (id: number) => {
+        try {
+            await fetch(`http://localhost:8000/admin_paths/delete_student/${id}`, {method: 'DELETE'})
+            toast.success('Student usunięty pomyślnie')
+            setShouldRefresh(prev => !prev)
+        } catch (error) {
+            console.error('Error:', error)
+            toast.error('Nie udało się usunąć studenta')
+        }
     }
 
     return (
         <div className="container mx-auto py-10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Admin section */}
                 <div>
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold">Administratorzy</h2>
@@ -276,3 +285,4 @@ export function UsersMagnetComponent() {
         </div>
     )
 }
+

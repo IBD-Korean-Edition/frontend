@@ -1,53 +1,79 @@
 'use client'
 
-import React, {useState} from 'react';
+import React, {useState} from 'react'
 import {toast} from "sonner"
-import {Button} from "@/components/ui/button";
-import {BookOpen, BuildingIcon, Home, LaptopIcon, LogOut, User, Users} from 'lucide-react';
-import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
-import {ModeToggle} from "@/components/ModeToggle";
-import Link from 'next/link';
-import {UsersMagnetComponent} from "@/hooks/user-management";
-import {FacultyManagement} from "@/app/(pages)/admin-home/faculty-management";
-import {AdminReturnsManagement} from "@/app/(pages)/admin-home/admin-returns-management";
-import {ItemManagement} from "@/app/(pages)/admin-home/item-management";
-import {flowStartParseAsyncArrowFromCallExpression} from "sucrase/dist/types/parser/plugins/flow";
-import {BookingsTable} from "@/app/(pages)/admin-home/bookings-table";
-import {TypesAndAttributesTables} from "@/app/(pages)/admin-home/types-and-attributes-tables";
+import {Button} from "@/components/ui/button"
+import {Home, Users, Building, RotateCcw, Laptop, History, Tags, User, LogOut} from 'lucide-react'
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu"
+import {ModeToggle} from "@/components/ModeToggle"
+import Link from 'next/link'
+import {UsersMagnetComponent} from "@/hooks/user-management"
+import {FacultyManagement} from "@/app/(pages)/admin-home/faculty-management"
+import {AdminReturnsManagement} from "@/app/(pages)/admin-home/admin-returns-management"
+import {ItemManagement} from "@/app/(pages)/admin-home/item-management"
+import {BookingsTable} from "@/app/(pages)/admin-home/bookings-table"
+import {TypesAndAttributesTables} from "@/app/(pages)/admin-home/types-and-attributes-tables"
+import {Card, CardHeader, CardTitle} from "@/components/ui/card"
 
 const navItems = [
-    {label: 'Home', icon: Home},
-    {label: 'Users', icon: Users},
-    {label: 'Faculty', icon: BuildingIcon},
-    {label: 'Booking', icon: BookOpen},
-    {label: 'Items', icon: LaptopIcon},
-    {label: 'Booking history', icon: LaptopIcon},
-    {label: 'Types and Attribute', icon: LaptopIcon}
-];
+    {label: 'Strona główna', icon: Home, description: 'Przegląd wszystkich funkcji administratora'},
+    {label: 'Użytkownicy', icon: Users, description: 'Zarządzaj kontami użytkowników i uprawnieniami'},
+    {label: 'Wydziały', icon: Building, description: 'Zarządzaj informacjami i ustawieniami wydziałów'},
+    {label: 'Zwroty', icon: RotateCcw, description: 'Przetwarzaj zwroty przedmiotów i sal'},
+    {label: 'Przedmioty', icon: Laptop, description: 'Zarządzaj inwentarzem przedmiotów do wypożyczenia'},
+    {label: 'Historia zwrotów', icon: History, description: 'Przeglądaj historię wszystkich zwrotów'},
+    {label: 'Typy i atrybuty', icon: Tags, description: 'Konfiguruj typy przedmiotów i ich atrybuty'}
+]
+
+function AdminTile({label, icon: Icon, description, onClick}: {label: string, icon: React.ComponentType, description: string, onClick: () => void}) {
+    return (
+        <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={onClick}>
+            <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+                <Icon className="h-8 w-8 text-primary mr-4"/>
+                <div>
+                    <CardTitle className="text-lg font-bold">{label}</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">{description}</p>
+                </div>
+            </CardHeader>
+        </Card>
+    )
+}
 
 export default function StudentRentalPage() {
-    const [selectedItem, setSelectedItem] = useState(navItems[0].label);
+    const [selectedItem, setSelectedItem] = useState(navItems[0].label)
 
     const renderContent = () => {
         switch (selectedItem) {
-            case 'Home':
-                return <div>Admin main page</div>;
-            case 'Users':
-                return <UsersMagnetComponent/>;
-            case 'Faculty':
-                return <FacultyManagement/>;
-            case 'Booking':
-                return <AdminReturnsManagement/>;
-            case 'Items':
-                return <ItemManagement/>;
-            case 'Booking history':
-                return <BookingsTable/>;
-            case 'Types and Attribute':
-                return <TypesAndAttributesTables/>;
+            case 'Strona główna':
+                return (
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {navItems.slice(1).map((item) => (
+                            <AdminTile
+                                key={item.label}
+                                label={item.label}
+                                icon={item.icon}
+                                description={item.description}
+                                onClick={() => setSelectedItem(item.label)}
+                            />
+                        ))}
+                    </div>
+                )
+            case 'Użytkownicy':
+                return <UsersMagnetComponent/>
+            case 'Wydziały':
+                return <FacultyManagement/>
+            case 'Zwroty':
+                return <AdminReturnsManagement/>
+            case 'Przedmioty':
+                return <ItemManagement/>
+            case 'Historia zwrotów':
+                return <BookingsTable/>
+            case 'Typy i atrybuty':
+                return <TypesAndAttributesTables/>
             default:
-                return <div>Content for {selectedItem}</div>;
+                return <div>Content for {selectedItem}</div>
         }
-    };
+    }
 
     return (
         <div className="flex h-screen bg-background text-foreground">
@@ -73,7 +99,8 @@ export default function StudentRentalPage() {
             </nav>
             <div className="flex-1 flex flex-col">
                 <header className="bg-card border-b border-border p-4 flex justify-between items-center">
-                    <div className="flex items-center space-x-4 ml-auto">
+                    <div className="bg-card border-b border-border p-4 flex justify-between items-center"></div>
+                    <div className="flex items-center space-x-4">
                         <ModeToggle/>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -98,5 +125,6 @@ export default function StudentRentalPage() {
                 </main>
             </div>
         </div>
-    );
+    )
 }
+

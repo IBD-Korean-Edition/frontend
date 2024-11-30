@@ -8,6 +8,7 @@ import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Building, DoorClosed, GraduationCap, Package, Plus, Trash2} from 'lucide-react'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
+import {toast} from "sonner";
 
 interface Item {
     id: number;
@@ -75,8 +76,6 @@ export function ItemManagement() {
                 faculty: item.faculty
             }))
 
-            console.log(updatedItems)
-
             setItems(updatedItems)
         } catch (error) {
             console.error('Error fetching items:', error)
@@ -86,11 +85,13 @@ export function ItemManagement() {
     const fetchTypes = async () => {
         try {
             const response = await fetch(`http://localhost:8000/admin_paths/types`)
-            if (!response.ok) {
-                throw new Error('Failed to fetch types')
-            }
             const data = await response.json()
-            setTypes(data.types)
+            if (response.ok) {
+                setTypes(data.types)
+                toast.success('Types fetched successfully')
+            } else {
+                toast.error(data.error)
+            }
         } catch (error) {
             console.error('Error fetching types:', error)
         }
@@ -99,11 +100,14 @@ export function ItemManagement() {
     const fetchAttributes = async () => {
         try {
             const response = await fetch(`http://localhost:8000/admin_paths/attributes`)
-            if (!response.ok) {
-                throw new Error('Failed to fetch attributes')
-            }
+
             const data = await response.json()
-            setAttributes(data.attributes)
+            if (response.ok) {
+                setAttributes(data.attributes)
+                toast.success('Attributes fetched successfully')
+            } else {
+                toast.error(data.error)
+            }
         } catch (error) {
             console.error('Error fetching attributes:', error)
         }
@@ -123,7 +127,6 @@ export function ItemManagement() {
                     building: newItem.building_number,
                 })
 
-                console.log(body)
                 const response = await fetch(`http://localhost:8000/admin_paths/add_item`, {
                     method: 'POST',
                     headers: {
@@ -131,15 +134,23 @@ export function ItemManagement() {
                     },
                     body: body,
                 })
-                if (!response.ok) {
-                    throw new Error('Failed to add item')
+
+                const data = await response.json()
+
+                if (response.ok) {
+
+                    await fetchItems()
+                    setNewItem({
+                        name: '', amount: 0, room_id: 0, room_number: '', building_number: '',
+                        type: '', attribute: '', faculty: '', building: ''
+                    })
+                    setIsDialogOpen(false)
+                    toast.success(data.message)
+
+                }else {
+                    toast.error(data.error)
                 }
-                await fetchItems()
-                setNewItem({
-                    name: '', amount: 0, room_id: 0, room_number: '', building_number: '',
-                    type: '', attribute: '', faculty: '', building: ''
-                })
-                setIsDialogOpen(false)
+
             } catch (error) {
                 console.error('Error adding item:', error)
                 alert('Failed to add item. Please try again.')
@@ -164,10 +175,14 @@ export function ItemManagement() {
             const response = await fetch(`http://localhost:8000/admin_paths/delete_item/${id}`, {
                 method: 'DELETE',
             })
-            if (!response.ok) {
-                throw new Error('Failed to delete item')
+            const data = await response.json()
+            if (response.ok) {
+                await fetchItems()
+                toast.success(data.message)
+            } else {
+                toast.error(data.error)
             }
-            await fetchItems()
+
         } catch (error) {
             console.error('Error deleting item:', error)
             alert('Failed to delete item. Please try again.')

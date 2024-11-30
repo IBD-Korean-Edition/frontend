@@ -60,7 +60,6 @@ export function AdminReturnsManagement() {
             if (!Array.isArray(itemsData.reserved_items)) {
                 throw new Error('Items data is not an array');
             }
-            console.log(itemsData)
 
             const updatedItems = itemsData.reserved_items.map((item: any) => ({
                 id: item.id,
@@ -71,10 +70,9 @@ export function AdminReturnsManagement() {
                 name: item.name
             }));
 
-            console.log(updatedItems)
-
             setReservedRooms(roomsData.rooms);
             setReservedItems(updatedItems);
+            toast.success('Data loaded successfully');
         } catch (error) {
             console.error('Error fetching data:', error);
             toast.error('Failed to load data. Please try again.');
@@ -99,12 +97,14 @@ export function AdminReturnsManagement() {
                 }),
             })
 
-            if (!response.ok) {
-                throw new Error('Failed to return room')
-            }
+            const tmp = await response.json()
 
-            toast.success('Room returned successfully')
-            fetchReservedRoomsAndItems()
+            if (response.ok) {
+                await fetchReservedRoomsAndItems()
+                toast.success(tmp.message)
+            }else {
+                toast.error(tmp.error)
+            }
         } catch (error) {
             console.error('Error returning room:', error)
             toast.error('Failed to return room. Please try again.')
@@ -120,7 +120,6 @@ export function AdminReturnsManagement() {
             }
 
             const jsonString = JSON.stringify(data)
-            console.log(jsonString)
 
             const response = await fetch(`http://localhost:8000/admin_paths/return_item`, {
                 method: 'POST',
@@ -130,12 +129,14 @@ export function AdminReturnsManagement() {
                 body: jsonString,
             })
 
-            if (!response.ok) {
-                throw new Error('Failed to return item')
-            }
+            const tmp = await response.json()
 
-            toast.success('Item returned successfully')
-            fetchReservedRoomsAndItems()
+            if (response.ok) {
+                await fetchReservedRoomsAndItems()
+                toast.success(tmp.message)
+            }else {
+                toast.error(tmp.error)
+            }
         } catch (error) {
             console.error('Error returning item:', error)
             toast.error('Failed to return item. Please try again.')
@@ -143,7 +144,7 @@ export function AdminReturnsManagement() {
     }
 
     if (loading) {
-        return <div className="container mx-auto py-10">Loading...</div>
+        return <div className="container mx-auto py-10">Ładowanie...</div>
     }
 
     return (

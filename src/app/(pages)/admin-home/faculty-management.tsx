@@ -1,12 +1,13 @@
 'use client'
 
-import {ChangeEvent, FormEvent, useEffect, useState} from 'react'
+import React, {ChangeEvent, FormEvent, useEffect, useState, useCallback} from 'react'
 import {Button} from "@/components/ui/button"
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger} from "@/components/ui/dialog"
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
 import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Building, DoorClosed, GraduationCap, PlusCircle, Trash2} from 'lucide-react'
+import {toast} from "sonner"
 
 interface Faculty {
     id: number;
@@ -41,137 +42,206 @@ export function FacultyManagement() {
     const [isRoomForRent, setIsRoomForRent] = useState(false)
     const [openDialogs, setOpenDialogs] = useState({faculty: false, building: false, room: false});
     const [isLoading, setIsLoading] = useState({faculties: false, buildings: false, rooms: false});
+    const [refreshTrigger, setRefreshTrigger] = useState({faculties: 0, buildings: 0, rooms: 0})
 
 
-    useEffect(() => {
-        setIsLoading({...isLoading, faculties: true})
-        fetchFaculties()
+    const fetchFaculties = useCallback(async () => {
+        setIsLoading(prev => ({...prev, faculties: true}))
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/get_all_faculty`, {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json'},
+            })
+            const data = await response.json()
+            setFaculties(data.faculties)
+        } catch (error) {
+            console.error('Error fetching faculties:', error)
+            toast.error('Failed to fetch faculties')
+        } finally {
+            setIsLoading(prev => ({...prev, faculties: false}))
+        }
+    }, [])
+
+    const fetchBuildings = useCallback(async (facultyName: string) => {
+        setIsLoading(prev => ({...prev, buildings: true}))
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/get_buildings_by_faculty/${facultyName}`)
+            const data = await response.json()
+            const buildingsWithRooms = data.buildings.map((building: any) => ({
+                id: building.id,
+                name: building.name,
+                RoomToRent: building.RoomToRent,
+                RoomWithItems: building.RoomWithItems
+            }))
+            setBuildings(buildingsWithRooms)
+        } catch (error) {
+            console.error('Error fetching buildings:', error)
+            toast.error('Failed to fetch buildings')
+        } finally {
+            setIsLoading(prev => ({...prev, buildings: false}))
+        }
     }, [])
 
     useEffect(() => {
+        fetchFaculties()
+    }, [fetchFaculties, refreshTrigger.faculties])
+
+    useEffect(() => {
         if (selectedFaculty) {
-            setIsLoading((prev) => ({...prev, buildings: true}));
-            fetchBuildings(selectedFaculty.name);
+            fetchBuildings(selectedFaculty.name)
         } else {
-            setBuildings([]);
-            setSelectedBuilding(null);
+            setBuildings([])
+            setSelectedBuilding(null)
         }
-    }, [selectedFaculty])
+    }, [selectedFaculty, fetchBuildings, refreshTrigger.buildings])
 
-    const fetchFaculties = async () => {
-        const response = await fetch(`http://localhost:8000/admin_paths/get_all_faculty`, {
-            method: 'GET',
-            headers: {'Content-Type': 'application/json'},
-        })
-        const data = await response.json()
-        setFaculties(data.faculties)
-        setIsLoading({...isLoading, faculties: false})
-    }
-
-    const fetchBuildings = async (facultyName: string) => {
-        const response = await fetch(`http://localhost:8000/admin_paths/get_buildings_by_faculty/${facultyName}`)
-        const data = await response.json()
-        const buildingsWithRooms = data.buildings.map((building: any) => ({
-            id: building.id,
-            name: building.name,
-            RoomToRent: building.RoomToRent,
-            RoomWithItems: building.RoomWithItems
-        }))
-        setBuildings(buildingsWithRooms)
-        setIsLoading({...isLoading, buildings: false})
-    }
+    useEffect(() => {
+        if (selectedBuilding) {
+            setRooms([...selectedBuilding.RoomToRent, ...selectedBuilding.RoomWithItems])
+        } else {
+            setRooms([])
+        }
+    }, [selectedBuilding, refreshTrigger.rooms])
 
     const handleAddFaculty = async (e: FormEvent) => {
         e.preventDefault()
-        const response = await fetch(`http://localhost:8000/admin_paths/add_faculty`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({faculty_name: newFaculty})
-        })
-        if (response.ok) {
-            fetchFaculties()
-            setNewFaculty('')
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/add_faculty`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({faculty_name: newFaculty})
+            })
+            const data = await response.json()
+            if (response.ok) {
+                setNewFaculty('')
+                setRefreshTrigger(prev => ({...prev, faculties: prev.faculties + 1}))
+                toast.success(data.message)
+            } else {
+                toast.error(data.error);
+            }
+        } catch (error) {
+            console.error('Error adding faculty:', error)
+            toast.error('Failed to add faculty')
         }
     }
 
     const handleAddBuilding = async (e: FormEvent) => {
         e.preventDefault()
         if (selectedFaculty) {
-            const response = await fetch(`http://localhost:8000/admin_paths/add_building`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({building_name: newBuilding, faculty_name: selectedFaculty.name})
-            })
-            if (response.ok) {
-                fetchBuildings(selectedFaculty.name)
-                setNewBuilding('')
+            try {
+                const response = await fetch(`http://localhost:8000/admin_paths/add_building`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({building_name: newBuilding, faculty_name: selectedFaculty.name})
+                })
+                const data = await response.json()
+                if (response.ok) {
+                    setNewBuilding('')
+                    setRefreshTrigger(prev => ({...prev, buildings: prev.buildings + 1}))
+                    toast.success(data.message)
+                } else {
+                    toast.error(data.error)
+                }
+            } catch (error) {
+                console.error('Error adding building:', error)
+                toast.error('Failed to add building')
             }
         }
     }
 
     const handleAddRoom = async (e: FormEvent) => {
         e.preventDefault()
-        if (selectedBuilding) {
-            const response = await fetch(`http://localhost:8000/admin_paths/add_room`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    room_number: newRoom,
-                    is_room_for_rent: isRoomForRent,
-                    building_name: selectedBuilding.name,
-                    faculty_name: selectedFaculty!.name
+        if (selectedBuilding && selectedFaculty) {
+            try {
+                const response = await fetch(`http://localhost:8000/admin_paths/add_room`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        room_number: newRoom,
+                        is_room_for_rent: isRoomForRent,
+                        building_name: selectedBuilding.name,
+                        faculty_name: selectedFaculty.name
+                    })
                 })
-            })
-            if (response.ok) {
-                fetchBuildings(selectedFaculty!.name)
-                setNewRoom('')
+                const data = await response.json()
+                if (response.ok) {
+                    setNewRoom('')
+                    setRefreshTrigger(prev => ({...prev, rooms: prev.rooms + 1, buildings: prev.buildings + 1}))
+                    toast.success(data.message)
+                } else {
+                    toast.error(data.error)
+                }
+            } catch (error) {
+                console.error('Error adding room:', error)
+                toast.error('Failed to add room')
             }
         }
     }
 
     const handleRemoveFaculty = async (id: number) => {
-        const response = await fetch(`http://localhost:8000/admin_paths/delete_faculty/${id}`, {method: 'DELETE'})
-        if (response.ok) {
-            fetchFaculties()
-            if (selectedFaculty?.id === id) {
-                setSelectedFaculty(null)
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/delete_faculty/${id}`, {method: 'DELETE'})
+            const data = await response.json()
+            if (response.ok) {
+                if (selectedFaculty?.id === id) {
+                    setSelectedFaculty(null)
+                }
+                setRefreshTrigger(prev => ({...prev, faculties: prev.faculties + 1}))
+                toast.success(data.message)
+            } else {
+                toast.error(data.error)
             }
+        } catch (error) {
+            console.error('Error removing faculty:', error)
+            toast.error('Failed to remove faculty')
         }
     }
 
     const handleRemoveBuilding = async (id: number) => {
-        const response = await fetch(`http://localhost:8000/admin_paths/remove_building/${id}`, {
-            method: 'DELETE',
-            headers: {'Content-Type': 'application/json'},
-        })
-        if (response.ok) {
-            fetchBuildings(selectedFaculty!.name)
-            if (selectedBuilding?.id === id) {
-                setSelectedBuilding(null)
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/remove_building/${id}`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'},
+            })
+            const data = await response.json()
+            if (response.ok) {
+                if (selectedBuilding?.id === id) {
+                    setSelectedBuilding(null)
+                }
+                setRefreshTrigger(prev => ({...prev, buildings: prev.buildings + 1}))
+                toast.success(data.message)
+            } else {
+                toast.error(data.error)
             }
+        } catch (error) {
+            console.error('Error removing building:', error)
+            toast.error('Failed to remove building')
         }
     }
 
-    const handleRemoveRoom = async (id: string, isRoomForRent: boolean, building:string, faculty:string) => {
-
-
-        const data = {
-            room_number: id,
-            is_room_for_rent: isRoomForRent,
-            building: building,
-            faculty: faculty
-        }
-
-        const jsonString = JSON.stringify(data)
-        console.log(jsonString)
-
-        const response = await fetch(`http://localhost:8000/admin_paths/remove_room`, {
-            method: 'DELETE',
-            headers: {'Content-Type': 'application/json'},
-            body: jsonString
-        })
-        if (response.ok) {
-            fetchBuildings(selectedFaculty!.name)
+    const handleRemoveRoom = async (id: string, isRoomForRent: boolean, building: string, faculty: string) => {
+        try {
+            const data = {
+                room_number: id,
+                is_room_for_rent: isRoomForRent,
+                building: building,
+                faculty: faculty
+            }
+            const response = await fetch(`http://localhost:8000/admin_paths/remove_room`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            const data2 = await response.json()
+            if (response.ok) {
+                setRefreshTrigger(prev => ({...prev, rooms: prev.rooms + 1, buildings: prev.buildings + 1}))
+                toast.success(data2.message)
+            } else {
+                toast.error(data2.error)
+            }
+        } catch (error) {
+            console.error('Error removing room:', error)
+            toast.error('Failed to remove room')
         }
     }
 
@@ -182,7 +252,6 @@ export function FacultyManagement() {
 
     const handleBuildingSelect = (building: Building) => {
         setSelectedBuilding(building);
-        setRooms([...building.RoomToRent, ...building.RoomWithItems])
     };
 
     return (

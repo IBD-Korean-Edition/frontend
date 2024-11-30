@@ -100,14 +100,16 @@ export function StudentItemManagementComponent() {
                 body: jsonString,
             })
 
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.error || 'Failed to rent item')
+            const responseData = await response.json()
+
+            if (response.ok) {
+                setIsReservationOpen(false)
+                await fetchAvailableItems()
+                toast.success(responseData.message || 'Item rented successfully')
+            }else {
+                toast.error(responseData.error || 'Failed to rent item')
             }
 
-            toast.success('Reservation confirmed')
-            setIsReservationOpen(false)
-            fetchAvailableItems() // Refresh the list of available items
         } catch (error) {
             console.error('Error renting item:', error)
             toast.error((error as Error).message || 'Failed to rent item')

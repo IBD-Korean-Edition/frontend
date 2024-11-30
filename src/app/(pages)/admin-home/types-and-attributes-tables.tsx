@@ -36,9 +36,16 @@ export function TypesAndAttributesTables() {
     const fetchTypes = async () => {
         try {
             const response = await fetch(`http://localhost:8000/admin_paths/types`)
-            if (!response.ok) throw new Error('Failed to fetch types')
+
             const data = await response.json()
-            setTypes(data.types)
+
+            if (response.ok) {
+                setTypes(data.types)
+                toast.success("Types fetched successfully")
+            } else {
+                toast.error(data.error)
+            }
+
         } catch (error) {
             toast("Failed to fetch types")
         } finally {
@@ -49,11 +56,18 @@ export function TypesAndAttributesTables() {
     const fetchAttributes = async () => {
         try {
             const response = await fetch(`http://localhost:8000/admin_paths/attributes`)
-            if (!response.ok) throw new Error('Failed to fetch attributes')
+
             const data = await response.json()
-            setAttributes(data.attributes)
+
+            if (response.ok) {
+                setAttributes(data.attributes)
+                toast.success("Attributes fetched successfully")
+            } else {
+                toast.error(data.error)
+            }
+
         } catch (error) {
-           toast("Failed to fetch attributes")
+            toast("Failed to fetch attributes")
         } finally {
             setIsLoading(prev => ({...prev, attributes: false}))
         }
@@ -67,11 +81,17 @@ export function TypesAndAttributesTables() {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({type_name: newType})
             })
-            if (!response.ok) throw new Error('Failed to create type')
-            await fetchTypes()
-            setNewType('')
-            setOpenDialogs(prev => ({...prev, type: false}))
-            toast("Type created successfully")
+
+            const data = await response.json()
+
+            if (response.ok) {
+                await fetchTypes()
+                setNewType('')
+                setOpenDialogs(prev => ({...prev, type: false}))
+                toast.success(data.message)
+            } else {
+                toast.error(data.error)
+            }
         } catch (error) {
             toast("Failed to create type destructive")
         }
@@ -85,11 +105,17 @@ export function TypesAndAttributesTables() {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({attribute_name: newAttribute})
             })
-            if (!response.ok) throw new Error('Failed to create attribute')
-            await fetchAttributes()
-            setNewAttribute('')
-            setOpenDialogs(prev => ({...prev, attribute: false}))
-            toast("Attribute created successfully")
+
+            const data = await response.json()
+
+            if (response.ok) {
+                await fetchAttributes()
+                setNewAttribute('')
+                setOpenDialogs(prev => ({...prev, attribute: false}))
+                toast.success(data.message)
+            } else {
+                toast.error(data.error)
+            }
         } catch (error) {
             toast("Failed to create attribute destructive")
         }
@@ -102,9 +128,15 @@ export function TypesAndAttributesTables() {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({id})
             })
-            if (!response.ok) throw new Error('Failed to delete type')
-            await fetchTypes()
-            toast("Type deleted successfully")
+
+            const data = await response.json()
+
+            if (response.ok) {
+                await fetchTypes()
+                toast.success(data.message)
+            } else {
+                toast.error(data.error)
+            }
         } catch (error) {
             toast("Failed to delete type destructive")
         }
@@ -117,9 +149,15 @@ export function TypesAndAttributesTables() {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({id})
             })
-            if (!response.ok) throw new Error('Failed to delete attribute')
-            await fetchAttributes()
-            toast("Attribute deleted successfully")
+
+            const data = await response.json()
+
+            if (response.ok) {
+                await fetchAttributes()
+                toast.success(data.message)
+            } else {
+                toast.error(data.error)
+            }
         } catch (error) {
             toast("Failed to delete attribute destructive")
         }
@@ -130,18 +168,18 @@ export function TypesAndAttributesTables() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-2xl font-bold">Types</CardTitle>
+                        <CardTitle className="text-2xl font-bold">Typ</CardTitle>
                         <Dialog open={openDialogs.type}
                                 onOpenChange={(open) => setOpenDialogs(prev => ({...prev, type: open}))}>
                             <DialogTrigger asChild>
                                 <Button size="sm">
                                     <Plus className="mr-2 h-4 w-4"/>
-                                    Add Type
+                                    Dodaj typ
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Add New Type</DialogTitle>
+                                    <DialogTitle>Dodaj nowy typ</DialogTitle>
                                 </DialogHeader>
                                 <form onSubmit={handleCreateType} className="space-y-4">
                                     <div className="space-y-2">
@@ -153,7 +191,7 @@ export function TypesAndAttributesTables() {
                                             required
                                         />
                                     </div>
-                                    <Button type="submit">Add Type</Button>
+                                    <Button type="submit">Dodaj typ</Button>
                                 </form>
                             </DialogContent>
                         </Dialog>
@@ -164,8 +202,8 @@ export function TypesAndAttributesTables() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead>Nazwa</TableHead>
+                                        <TableHead className="text-right">Akcja</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -188,22 +226,22 @@ export function TypesAndAttributesTables() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-2xl font-bold">Attributes</CardTitle>
+                        <CardTitle className="text-2xl font-bold">Atrybuty</CardTitle>
                         <Dialog open={openDialogs.attribute}
                                 onOpenChange={(open) => setOpenDialogs(prev => ({...prev, attribute: open}))}>
                             <DialogTrigger asChild>
                                 <Button size="sm">
                                     <Plus className="mr-2 h-4 w-4"/>
-                                    Add Attribute
+                                    Dodaj atrybut
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Add New Attribute</DialogTitle>
+                                    <DialogTitle>Dodaj nowy atrybut</DialogTitle>
                                 </DialogHeader>
                                 <form onSubmit={handleCreateAttribute} className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="attribute-name">Attribute Name</Label>
+                                        <Label htmlFor="attribute-name">Nazwa atrybuty</Label>
                                         <Input
                                             id="attribute-name"
                                             value={newAttribute}
@@ -211,7 +249,7 @@ export function TypesAndAttributesTables() {
                                             required
                                         />
                                     </div>
-                                    <Button type="submit">Add Attribute</Button>
+                                    <Button type="submit">Dodaj atrybuty</Button>
                                 </form>
                             </DialogContent>
                         </Dialog>
@@ -222,8 +260,8 @@ export function TypesAndAttributesTables() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead>Nazwa</TableHead>
+                                        <TableHead className="text-right">Akcja</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>

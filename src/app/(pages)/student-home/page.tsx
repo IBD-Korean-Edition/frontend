@@ -1,41 +1,70 @@
 'use client'
 
-import React, {useState} from 'react';
+import React, {useState} from 'react'
 import {toast} from "sonner"
-import {Button} from "@/components/ui/button";
-import {BookOpen, DoorOpen, Home, LogOut, PocketKnife, User} from 'lucide-react';
-import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
-import {ModeToggle} from "@/components/ModeToggle";
-import Link from 'next/link';
-import {StudentItemManagementComponent} from "@/app/(pages)/student-home/student-item-management";
-import {StudentReservationsComponent} from "@/app/(pages)/student-home/student-reservations";
-import {RoomsBookingComponent} from "@/app/(pages)/student-home/room-reservation";
-
+import {Button} from "@/components/ui/button"
+import {Home, BookOpen, DoorOpen, PocketKnife, LogOut, User, Calendar, Clock} from 'lucide-react'
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/components/ui/dropdown-menu"
+import {ModeToggle} from "@/components/ModeToggle"
+import Link from 'next/link'
+import {StudentItemManagementComponent} from "@/app/(pages)/student-home/student-item-management"
+import {StudentReservationsComponent} from "@/app/(pages)/student-home/student-reservations"
+import {RoomsBookingComponent} from "@/app/(pages)/student-home/room-reservation"
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 
 const navItems = [
-    {label: 'Home', icon: Home},
-    {label: 'Items', icon: PocketKnife},
-    {label: 'Rooms', icon: DoorOpen},
-    {label: 'My booking', icon: BookOpen},
-];
+    {label: 'Strona główna', icon: Home, description: 'Przegląd systemu wypożyczeń'},
+    {label: 'Przedmioty', icon: PocketKnife, description: 'Przeglądaj i wypożyczaj sprzęt'},
+    {label: 'Sale', icon: DoorOpen, description: 'Rezerwuj sale wykładowe'},
+    {label: 'Moje rezerwacje', icon: Calendar, description: 'Zarządzaj swoimi rezerwacjami'},
+    // {label: 'Historia', icon: Clock, description: 'Przeglądaj historię wypożyczeń'},
+]
+
+function AdminTile({label, icon: Icon, description, onClick}: {label: string, icon: React.ComponentType, description: string, onClick: () => void}) {
+    return (
+        <Card className="cursor-pointer hover:bg-accent transition-colors" onClick={onClick}>
+            <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+                <Icon className="h-8 w-8 text-primary mr-4"/>
+                <div>
+                    <CardTitle className="text-lg font-bold">{label}</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">{description}</p>
+                </div>
+            </CardHeader>
+        </Card>
+    )
+}
 
 export default function StudentRentalPage() {
-    const [selectedItem, setSelectedItem] = useState(navItems[0].label);
+    const [selectedItem, setSelectedItem] = useState(navItems[0].label)
 
     const renderContent = () => {
         switch (selectedItem) {
-            case 'Home':
-                return <div>Welcome to the Academic Equipment Rental System</div>;
-            case 'Items':
-                return <StudentItemManagementComponent/>;
-            case 'My booking':
-                return <StudentReservationsComponent/>;
-            case 'Rooms':
-                return <RoomsBookingComponent/>;
+            case 'Strona główna':
+                return (
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {navItems.slice(1).map((item) => (
+                            <AdminTile
+                                key={item.label}
+                                label={item.label}
+                                icon={item.icon}
+                                description={item.description}
+                                onClick={() => setSelectedItem(item.label)}
+                            />
+                        ))}
+                    </div>
+                )
+            case 'Przedmioty':
+                return <StudentItemManagementComponent/>
+            case 'Moje rezerwacje':
+                return <StudentReservationsComponent/>
+            case 'Sale':
+                return <RoomsBookingComponent/>
+            case 'Historia':
+                return <div>Historia wypożyczeń</div>
             default:
-                return <div>Content for {selectedItem}</div>;
+                return <div>Zawartość dla {selectedItem}</div>
         }
-    };
+    }
 
     return (
         <div className="flex h-screen bg-background text-foreground">
@@ -61,7 +90,8 @@ export default function StudentRentalPage() {
             </nav>
             <div className="flex-1 flex flex-col">
                 <header className="bg-card border-b border-border p-4 flex justify-between items-center">
-                    <div className="flex items-center space-x-4 ml-auto">
+                    <div className="bg-card border-b border-border p-4 flex justify-between items-center"></div>
+                    <div className="flex items-center space-x-4">
                         <ModeToggle/>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -72,9 +102,9 @@ export default function StudentRentalPage() {
                             <DropdownMenuContent>
                                 <DropdownMenuItem asChild>
                                     <Link href="/welcome-page" className="flex items-center"
-                                          onClick={() => toast("Logout success")}>
+                                          onClick={() => toast("Wylogowano pomyślnie")}>
                                         <LogOut className="mr-2 h-4 w-4"/>
-                                        Logout
+                                        Wyloguj
                                     </Link>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -86,5 +116,6 @@ export default function StudentRentalPage() {
                 </main>
             </div>
         </div>
-    );
+    )
 }
+
