@@ -15,7 +15,7 @@ type Item = {
     name: string
     amount: number
     type: number
-    attributes: string
+    attribute: string
     room_number: string
     building: string
     faculty: string
@@ -156,7 +156,7 @@ export function StudentItemManagementComponent() {
                                     <FlaskConical className="inline mr-1 h-4 w-4"/>
                                     {item.type}
                                 </TableCell>
-                                <TableCell>{item.attributes}</TableCell>
+                                <TableCell>{item.attribute}</TableCell>
                                 <TableCell>
                                     <Button onClick={() => handleReserve(item)} size="sm">
                                         <BookOpen className="mr-2 h-4 w-4"/>
