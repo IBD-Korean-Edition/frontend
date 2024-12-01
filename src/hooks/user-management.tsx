@@ -9,6 +9,7 @@ import {Label} from "@/components/ui/label"
 import {Switch} from "@/components/ui/switch"
 import {Trash2, UserPlus} from 'lucide-react'
 import {toast} from "sonner"
+import {z} from 'zod';
 
 interface Admin {
     id: number
@@ -59,12 +60,29 @@ export function UsersMagnetComponent() {
         fetchData()
     }, [fetchData, shouldRefresh])
 
+    const adminSchema = z.object({
+        username: z.string().regex(/^\d{6}$/, 'Login must be a string of 6 digits'),
+        password: z.string().min(8, 'Password must be at least 8 characters long')
+    });
+
+    const studentSchema = z.object({
+        username: z.string().regex(/^\d{6}$/, 'Login must be a string of 6 digits'),
+        password: z.string().min(8, 'Password must be at least 8 characters long')
+    });
+
     const handleAddAdmin = async (e: FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
         const adminData = {
             username: newAdmin.login,
             password: newAdmin.password
+        };
+
+        const validation = adminSchema.safeParse(adminData);
+        if (!validation.success) {
+            validation.error.errors.forEach(err => toast.error(err.message));
+            return;
         }
+
         try {
             const response = await fetch('http://localhost:8000/admin_paths/add_admin', {
                 method: 'POST',
@@ -72,43 +90,50 @@ export function UsersMagnetComponent() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(adminData)
-            })
+            });
             if (response.status === 401 || response.status === 403) {
-                toast.error('Brak uprawnień')
-                return
+                toast.error('Brak uprawnień');
+                return;
             }
-            const data = await response.json()
+            const data = await response.json();
             if (data) {
-                setNewAdmin({login: '', password: '', isSuperAdmin: false})
-                toast.success('Administrator dodany pomyślnie')
-                setShouldRefresh(prev => !prev)
+                setNewAdmin({login: '', password: '', isSuperAdmin: false});
+                toast.success('Administrator dodany pomyślnie');
+                setShouldRefresh(prev => !prev);
             }
         } catch (error) {
-            console.error('Error:', error)
-            toast.error('Nie udało się dodać administratora')
+            console.error('Error:', error);
+            toast.error('Nie udało się dodać administratora');
         }
-    }
+    };
 
     const handleAddStudent = async (e: FormEvent) => {
-        e.preventDefault()
+        e.preventDefault();
         const studentData = {
             username: newStudent.login,
             password: newStudent.password
+        };
+
+        const validation = studentSchema.safeParse(studentData);
+        if (!validation.success) {
+            validation.error.errors.forEach(err => toast.error(err.message));
+            return;
         }
+
         try {
             await fetch('http://localhost:8000/admin_paths/add_student', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(studentData)
-            })
-            setNewStudent({login: '', password: ''})
-            toast.success('Student dodany pomyślnie')
-            setShouldRefresh(prev => !prev)
+            });
+            setNewStudent({login: '', password: ''});
+            toast.success('Student dodany pomyślnie');
+            setShouldRefresh(prev => !prev);
         } catch (error) {
-            console.error('Error:', error)
-            toast.error('Nie udało się dodać studenta')
+            console.error('Error:', error);
+            toast.error('Nie udało się dodać studenta');
         }
-    }
+    };
 
     const handleRemoveAdmin = async (id: number) => {
         try {
