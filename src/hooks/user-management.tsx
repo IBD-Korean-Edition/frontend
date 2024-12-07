@@ -9,7 +9,7 @@ import {Label} from "@/components/ui/label"
 import {Switch} from "@/components/ui/switch"
 import {Trash2, UserPlus} from 'lucide-react'
 import {toast} from "sonner"
-import {z} from 'zod';
+import {z} from 'zod'
 
 interface Admin {
     id: number
@@ -30,6 +30,7 @@ export function UsersMagnetComponent() {
     const [newAdmin, setNewAdmin] = useState<Partial<Admin>>({login: '', password: '', isSuperAdmin: false})
     const [newStudent, setNewStudent] = useState<Partial<Student>>({login: '', password: ''})
     const [shouldRefresh, setShouldRefresh] = useState(false)
+    const [confirmDialog, setConfirmDialog] = useState({isOpen: false, id: null as number | null, type: ''})
 
     const fetchData = useCallback(async () => {
         try {
@@ -63,24 +64,24 @@ export function UsersMagnetComponent() {
     const adminSchema = z.object({
         username: z.string().regex(/^\d{6}$/, 'Login must be a string of 6 digits'),
         password: z.string().min(8, 'Password must be at least 8 characters long')
-    });
+    })
 
     const studentSchema = z.object({
         username: z.string().regex(/^\d{6}$/, 'Login must be a string of 6 digits'),
         password: z.string().min(8, 'Password must be at least 8 characters long')
-    });
+    })
 
     const handleAddAdmin = async (e: FormEvent) => {
-        e.preventDefault();
+        e.preventDefault()
         const adminData = {
             username: newAdmin.login,
             password: newAdmin.password
-        };
+        }
 
-        const validation = adminSchema.safeParse(adminData);
+        const validation = adminSchema.safeParse(adminData)
         if (!validation.success) {
-            validation.error.errors.forEach(err => toast.error(err.message));
-            return;
+            validation.error.errors.forEach(err => toast.error(err.message))
+            return
         }
 
         try {
@@ -90,34 +91,34 @@ export function UsersMagnetComponent() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(adminData)
-            });
+            })
             if (response.status === 401 || response.status === 403) {
-                toast.error('Brak uprawnień');
-                return;
+                toast.error('Brak uprawnień')
+                return
             }
-            const data = await response.json();
+            const data = await response.json()
             if (data) {
-                setNewAdmin({login: '', password: '', isSuperAdmin: false});
-                toast.success('Administrator dodany pomyślnie');
-                setShouldRefresh(prev => !prev);
+                setNewAdmin({login: '', password: '', isSuperAdmin: false})
+                toast.success('Administrator dodany pomyślnie')
+                setShouldRefresh(prev => !prev)
             }
         } catch (error) {
-            console.error('Error:', error);
-            toast.error('Nie udało się dodać administratora');
+            console.error('Error:', error)
+            toast.error('Nie udało się dodać administratora')
         }
-    };
+    }
 
     const handleAddStudent = async (e: FormEvent) => {
-        e.preventDefault();
+        e.preventDefault()
         const studentData = {
             username: newStudent.login,
             password: newStudent.password
-        };
+        }
 
-        const validation = studentSchema.safeParse(studentData);
+        const validation = studentSchema.safeParse(studentData)
         if (!validation.success) {
-            validation.error.errors.forEach(err => toast.error(err.message));
-            return;
+            validation.error.errors.forEach(err => toast.error(err.message))
+            return
         }
 
         try {
@@ -125,35 +126,41 @@ export function UsersMagnetComponent() {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(studentData)
-            });
-            setNewStudent({login: '', password: ''});
-            toast.success('Student dodany pomyślnie');
-            setShouldRefresh(prev => !prev);
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error('Nie udało się dodać studenta');
-        }
-    };
-
-    const handleRemoveAdmin = async (id: number) => {
-        try {
-            await fetch(`http://localhost:8000/admin_paths/delete_admin/${id}`, {method: 'DELETE'})
-            toast.success('Administrator usunięty pomyślnie')
+            })
+            setNewStudent({login: '', password: ''})
+            toast.success('Student dodany pomyślnie')
             setShouldRefresh(prev => !prev)
         } catch (error) {
             console.error('Error:', error)
-            toast.error('Nie udało się usunąć administratora')
+            toast.error('Nie udało się dodać studenta')
         }
     }
 
-    const handleRemoveStudent = async (id: number) => {
+    const handleRemoveAdmin = (id: number) => {
+        setConfirmDialog({isOpen: true, id, type: 'admin'})
+    }
+
+    const handleRemoveStudent = (id: number) => {
+        setConfirmDialog({isOpen: true, id, type: 'student'})
+    }
+
+    const handleConfirmRemove = async () => {
+        if (confirmDialog.id === null) return
+
         try {
-            await fetch(`http://localhost:8000/admin_paths/delete_student/${id}`, {method: 'DELETE'})
-            toast.success('Student usunięty pomyślnie')
+            if (confirmDialog.type === 'admin') {
+                await fetch(`http://localhost:8000/admin_paths/delete_admin/${confirmDialog.id}`, {method: 'DELETE'})
+                toast.success('Administrator usunięty pomyślnie')
+            } else {
+                await fetch(`http://localhost:8000/admin_paths/delete_student/${confirmDialog.id}`, {method: 'DELETE'})
+                toast.success('Student usunięty pomyślnie')
+            }
             setShouldRefresh(prev => !prev)
         } catch (error) {
             console.error('Error:', error)
-            toast.error('Nie udało się usunąć studenta')
+            toast.error(`Nie udało się usunąć ${confirmDialog.type === 'admin' ? 'administratora' : 'studenta'}`)
+        } finally {
+            setConfirmDialog({isOpen: false, id: null, type: ''})
         }
     }
 
@@ -239,6 +246,7 @@ export function UsersMagnetComponent() {
                         </TableBody>
                     </Table>
                 </div>
+                {/* Student section */}
                 <div>
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold">Studenci</h2>
@@ -307,6 +315,22 @@ export function UsersMagnetComponent() {
                     </Table>
                 </div>
             </div>
+            {/* Confirmation Dialog */}
+            <Dialog open={confirmDialog.isOpen}
+                    onOpenChange={(isOpen) => !isOpen && setConfirmDialog({isOpen: false, id: null, type: ''})}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Potwierdź usunięcie</DialogTitle>
+                    </DialogHeader>
+                    <p>Czy na pewno chcesz usunąć tego {confirmDialog.type === 'admin' ? 'administratora' : 'studenta'}?
+                        Ta operacja jest nieodwracalna.</p>
+                    <div className="flex justify-end space-x-2">
+                        <Button variant="outline"
+                                onClick={() => setConfirmDialog({isOpen: false, id: null, type: ''})}>Anuluj</Button>
+                        <Button variant="destructive" onClick={handleConfirmRemove}>Usuń</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

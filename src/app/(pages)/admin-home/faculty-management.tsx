@@ -29,6 +29,18 @@ interface Building {
     RoomWithItems: Room[];
 }
 
+interface ConfirmDialogState {
+    isOpen: boolean;
+    type: 'faculty' | 'building' | 'room' | null;
+    id: number | string | null;
+    name: string;
+    additionalData?: {
+        isRoomForRent?: boolean;
+        building?: string;
+        faculty?: string;
+    };
+}
+
 export function FacultyManagement() {
     const [faculties, setFaculties] = useState<Faculty[]>([])
     const [buildings, setBuildings] = useState<Building[]>([])
@@ -43,7 +55,13 @@ export function FacultyManagement() {
     const [openDialogs, setOpenDialogs] = useState({faculty: false, building: false, room: false});
     const [isLoading, setIsLoading] = useState({faculties: false, buildings: false, rooms: false});
     const [refreshTrigger, setRefreshTrigger] = useState({faculties: 0, buildings: 0, rooms: 0})
-
+    const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+        isOpen: false,
+        type: null,
+        id: null,
+        name: '',
+        additionalData: {}
+    })
 
     const fetchFaculties = useCallback(async () => {
         setIsLoading(prev => ({...prev, faculties: true}))
@@ -254,6 +272,32 @@ export function FacultyManagement() {
         setSelectedBuilding(building);
     };
 
+    const handleConfirmRemove = async () => {
+        if (!confirmDialog.type || confirmDialog.id === null) return;
+
+        try {
+            switch (confirmDialog.type) {
+                case 'faculty':
+                    await handleRemoveFaculty(confirmDialog.id as number);
+                    break;
+                case 'building':
+                    await handleRemoveBuilding(confirmDialog.id as number);
+                    break;
+                case 'room':
+                    if (confirmDialog.additionalData) {
+                        const {isRoomForRent, building, faculty} = confirmDialog.additionalData;
+                        await handleRemoveRoom(confirmDialog.id as string, isRoomForRent!, building!, faculty!);
+                    }
+                    break;
+            }
+        } catch (error) {
+            console.error(`Error removing ${confirmDialog.type}:`, error);
+            toast.error(`Failed to remove ${confirmDialog.type}`);
+        } finally {
+            setConfirmDialog({isOpen: false, type: null, id: null, name: '', additionalData: {}});
+        }
+    };
+
     return (
         <div className="container mx-auto py-10">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -309,7 +353,12 @@ export function FacultyManagement() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="destructive" size="icon"
-                                                    onClick={() => handleRemoveFaculty(faculty.id)}>
+                                                    onClick={() => setConfirmDialog({
+                                                        isOpen: true,
+                                                        type: 'faculty',
+                                                        id: faculty.id,
+                                                        name: faculty.name
+                                                    })}>
                                                 <Trash2 className="h-4 w-4"/>
                                             </Button>
                                         </TableCell>
@@ -371,7 +420,12 @@ export function FacultyManagement() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="destructive" size="icon"
-                                                    onClick={() => handleRemoveBuilding(building.id)}>
+                                                    onClick={() => setConfirmDialog({
+                                                        isOpen: true,
+                                                        type: 'building',
+                                                        id: building.id,
+                                                        name: building.name
+                                                    })}>
                                                 <Trash2 className="h-4 w-4"/>
                                             </Button>
                                         </TableCell>
@@ -447,7 +501,17 @@ export function FacultyManagement() {
                                         <TableCell>{room.is_to_rent ? 'Do wynajęcia' : 'Z przedmiotami'}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="destructive" size="icon"
-                                                    onClick={() => handleRemoveRoom(room.room_number, room.is_to_rent, room.building, room.faculty)}>
+                                                    onClick={() => setConfirmDialog({
+                                                        isOpen: true,
+                                                        type: 'room',
+                                                        id: room.room_number,
+                                                        name: `Pokój ${room.room_number}`,
+                                                        additionalData: {
+                                                            isRoomForRent: room.is_to_rent,
+                                                            building: room.building,
+                                                            faculty: room.faculty
+                                                        }
+                                                    })}>
                                                 <Trash2 className="h-4 w-4"/>
                                             </Button>
                                         </TableCell>
@@ -458,6 +522,31 @@ export function FacultyManagement() {
                     </div>
                 </div>
             </div>
+            <Dialog open={confirmDialog.isOpen} onOpenChange={(isOpen) => !isOpen && setConfirmDialog({
+                isOpen: false,
+                type: null,
+                id: null,
+                name: '',
+                additionalData: {}
+            })}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Potwierdź usunięcie</DialogTitle>
+                    </DialogHeader>
+                    <p>Czy na pewno chcesz usunąć {confirmDialog.name}? Ta operacja jest nieodwracalna.</p>
+                    <div className="flex justify-end space-x-2">
+                        <Button variant="outline" onClick={() => setConfirmDialog({
+                            isOpen: false,
+                            type: null,
+                            id: null,
+                            name: '',
+                            additionalData: {}
+                        })}>Anuluj</Button>
+                        <Button variant="destructive" onClick={handleConfirmRemove}>Usuń</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
+

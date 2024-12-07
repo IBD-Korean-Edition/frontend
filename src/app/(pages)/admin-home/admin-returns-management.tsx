@@ -10,6 +10,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import {Dialog, DialogContent, DialogHeader, DialogTitle} from "@/components/ui/dialog"
 import {DoorClosed, Building, GraduationCap, CheckCircle, User, Package, Calendar} from 'lucide-react'
 import {toast} from 'sonner'
 
@@ -32,11 +33,21 @@ interface ReservedItem {
     name: string;
 }
 
+interface ConfirmDialogState {
+    isOpen: boolean;
+    type: 'room' | 'item';
+    data: ReservedRoom | ReservedItem | null;
+}
 
 export function AdminReturnsManagement() {
     const [reservedRooms, setReservedRooms] = useState<ReservedRoom[]>([])
     const [reservedItems, setReservedItems] = useState<ReservedItem[]>([])
     const [loading, setLoading] = useState(true)
+    const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+        isOpen: false,
+        type: 'room',
+        data: null
+    })
 
     useEffect(() => {
         fetchReservedRoomsAndItems()
@@ -81,65 +92,60 @@ export function AdminReturnsManagement() {
         }
     };
 
-
-    const handleRoomReturn = async (room_number: string, reservedBy: string, faculty: string, building: string) => {
-        try {
-            const response = await fetch(`http://localhost:8000/admin_paths/return_room`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    room_number: room_number,
-                    reserved_by: reservedBy,
-                    faculty: faculty,
-                    building: building
-                }),
-            })
-
-            const tmp = await response.json()
-
-            if (response.ok) {
-                await fetchReservedRoomsAndItems()
-                toast.success(tmp.message)
-            }else {
-                toast.error(tmp.error)
-            }
-        } catch (error) {
-            console.error('Error returning room:', error)
-            toast.error('Failed to return room. Please try again.')
-        }
+    const handleRoomReturn = async (room: ReservedRoom) => {
+        setConfirmDialog({isOpen: true, type: 'room', data: room});
     }
 
-    const handleItemReturn = async (itemId: string, reservedBy: string) => {
-        try {
+    const handleItemReturn = async (item: ReservedItem) => {
+        setConfirmDialog({isOpen: true, type: 'item', data: item});
+    }
 
-            const data = {
-                id: itemId,
-                reserved_by: reservedBy
+    const handleConfirmReturn = async () => {
+        if (!confirmDialog.data) return;
+
+        try {
+            let response;
+            if (confirmDialog.type === 'room') {
+                const room = confirmDialog.data as ReservedRoom;
+                response = await fetch(`http://localhost:8000/admin_paths/return_room`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        room_number: room.room_number,
+                        reserved_by: room.reserved_by,
+                        faculty: room.faculty,
+                        building: room.building
+                    }),
+                });
+            } else {
+                const item = confirmDialog.data as ReservedItem;
+                response = await fetch(`http://localhost:8000/admin_paths/return_item`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: item.item_id,
+                        reserved_by: item.student_id
+                    }),
+                });
             }
 
-            const jsonString = JSON.stringify(data)
-
-            const response = await fetch(`http://localhost:8000/admin_paths/return_item`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: jsonString,
-            })
-
-            const tmp = await response.json()
+            const data = await response.json();
 
             if (response.ok) {
-                await fetchReservedRoomsAndItems()
-                toast.success(tmp.message)
-            }else {
-                toast.error(tmp.error)
+                await fetchReservedRoomsAndItems();
+                toast.success(data.message);
+            } else {
+                toast.error(data.error);
             }
         } catch (error) {
-            console.error('Error returning item:', error)
-            toast.error('Failed to return item. Please try again.')
+            console.error('Error returning item:', error);
+            toast.error(`Failed to return ${confirmDialog.type}. Please try again.`);
+        } finally {
+            setConfirmDialog({isOpen: false, type: 'room', data: null});
         }
     }
 
@@ -198,7 +204,7 @@ export function AdminReturnsManagement() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button
-                                            onClick={() => handleRoomReturn(room.room_number, room.reserved_by, room.faculty, room.building)}
+                                            onClick={() => handleRoomReturn(room)}
                                             className="gap-2">
                                             <CheckCircle className="h-4 w-4"/>
                                             Potwierdź Zwrot
@@ -225,25 +231,25 @@ export function AdminReturnsManagement() {
                             {reservedItems.map((item) => (
                                 <TableRow key={item.id}>
                                     <TableCell>
-                        <span className="flex items-center gap-2">
-                            <Package className="h-4 w-4"/>
-                            {item.name}
-                        </span>
+                                        <span className="flex items-center gap-2">
+                                            <Package className="h-4 w-4"/>
+                                            {item.name}
+                                        </span>
                                     </TableCell>
                                     <TableCell>
-                        <span className="flex items-center gap-2">
-                            <User className="h-4 w-4"/>
-                            {item.student_id}
-                        </span>
+                                        <span className="flex items-center gap-2">
+                                            <User className="h-4 w-4"/>
+                                            {item.student_id}
+                                        </span>
                                     </TableCell>
                                     <TableCell>
-                        <span className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4"/>
-                            {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
-                        </span>
+                                        <span className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4"/>
+                                            {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
+                                        </span>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button onClick={() => handleItemReturn(item.item_id, item.student_id)}
+                                        <Button onClick={() => handleItemReturn(item)}
                                                 className="gap-2">
                                             <CheckCircle className="h-4 w-4"/>
                                             Potwierdź Zwrot
@@ -254,8 +260,34 @@ export function AdminReturnsManagement() {
                         </TableBody>
                     </Table>
                 </div>
-
             </div>
+
+            <Dialog open={confirmDialog.isOpen}
+                    onOpenChange={(isOpen) => !isOpen && setConfirmDialog({isOpen: false, type: 'room', data: null})}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Potwierdź
+                            odbiór {confirmDialog.type === 'room' ? 'pokoju' : 'przedmiotu'}</DialogTitle>
+                    </DialogHeader>
+                    <p>Czy na pewno chcesz potwierdzić
+                        odbiór {confirmDialog.type === 'room' ? 'pokoju' : 'przedmiotu'}?</p>
+                    {confirmDialog.type === 'room' && confirmDialog.data && (
+                        <p>Pokój: {(confirmDialog.data as ReservedRoom).room_number}</p>
+                    )}
+                    {confirmDialog.type === 'item' && confirmDialog.data && (
+                        <p>Przedmiot: {(confirmDialog.data as ReservedItem).name}</p>
+                    )}
+                    <div className="flex justify-end space-x-2">
+                        <Button variant="outline" onClick={() => setConfirmDialog({
+                            isOpen: false,
+                            type: 'room',
+                            data: null
+                        })}>Anuluj</Button>
+                        <Button variant="default" onClick={handleConfirmReturn}>Potwierdź</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
+

@@ -1,6 +1,6 @@
 'use client'
 
-import React, {useEffect, useState} from 'react'
+import {useEffect, useState} from 'react'
 import {Button} from "@/components/ui/button"
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
 import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger} from "@/components/ui/dialog"
@@ -8,7 +8,7 @@ import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Building, DoorClosed, GraduationCap, Package, Plus, Trash2} from 'lucide-react'
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
-import {toast} from "sonner";
+import {toast} from "sonner"
 
 interface Item {
     id: number;
@@ -49,6 +49,7 @@ export function ItemManagement() {
         faculty: '',
         building: '',
     })
+    const [confirmDialog, setConfirmDialog] = useState({isOpen: false, itemId: null as number | null});
 
     useEffect(() => {
         fetchItems()
@@ -171,21 +172,28 @@ export function ItemManagement() {
     }
 
     const handleDeleteItem = async (id: number) => {
-        try {
-            const response = await fetch(`http://localhost:8000/admin_paths/delete_item/${id}`, {
-                method: 'DELETE',
-            })
-            const data = await response.json()
-            if (response.ok) {
-                await fetchItems()
-                toast.success(data.message)
-            } else {
-                toast.error(data.error)
-            }
+        setConfirmDialog({isOpen: true, itemId: id});
+    }
 
+    const handleConfirmDelete = async () => {
+        if (confirmDialog.itemId === null) return;
+
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/delete_item/${confirmDialog.itemId}`, {
+                method: 'DELETE',
+            });
+            const data = await response.json();
+            if (response.ok) {
+                await fetchItems();
+                toast.success(data.message);
+            } else {
+                toast.error(data.error);
+            }
         } catch (error) {
-            console.error('Error deleting item:', error)
-            alert('Failed to delete item. Please try again.')
+            console.error('Error deleting item:', error);
+            toast.error('Failed to delete item. Please try again.');
+        } finally {
+            setConfirmDialog({isOpen: false, itemId: null});
         }
     }
 
@@ -333,6 +341,20 @@ export function ItemManagement() {
                     ))}
                 </TableBody>
             </Table>
+            <Dialog open={confirmDialog.isOpen}
+                    onOpenChange={(isOpen) => !isOpen && setConfirmDialog({isOpen: false, itemId: null})}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Potwierdź usunięcie</DialogTitle>
+                    </DialogHeader>
+                    <p>Czy na pewno chcesz usunąć ten przedmiot? Ta operacja jest nieodwracalna.</p>
+                    <div className="flex justify-end space-x-2">
+                        <Button variant="outline"
+                                onClick={() => setConfirmDialog({isOpen: false, itemId: null})}>Anuluj</Button>
+                        <Button variant="destructive" onClick={handleConfirmDelete}>Usuń</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

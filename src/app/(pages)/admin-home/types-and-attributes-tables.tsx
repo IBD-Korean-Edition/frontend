@@ -20,6 +20,12 @@ interface Attribute {
     attribute_name: string
 }
 
+interface ConfirmDialogState {
+    isOpen: boolean
+    id: number | null
+    itemType: 'type' | 'attribute'
+}
+
 export function TypesAndAttributesTables() {
     const [types, setTypes] = useState<Type[]>([])
     const [attributes, setAttributes] = useState<Attribute[]>([])
@@ -27,6 +33,11 @@ export function TypesAndAttributesTables() {
     const [newAttribute, setNewAttribute] = useState('')
     const [isLoading, setIsLoading] = useState({types: true, attributes: true})
     const [openDialogs, setOpenDialogs] = useState({type: false, attribute: false})
+    const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({
+        isOpen: false,
+        id: null,
+        itemType: 'type'
+    })
 
     useEffect(() => {
         fetchTypes()
@@ -36,7 +47,6 @@ export function TypesAndAttributesTables() {
     const fetchTypes = async () => {
         try {
             const response = await fetch(`http://localhost:8000/admin_paths/types`)
-
             const data = await response.json()
 
             if (response.ok) {
@@ -45,9 +55,8 @@ export function TypesAndAttributesTables() {
             } else {
                 toast.error(data.error)
             }
-
         } catch (error) {
-            toast("Failed to fetch types")
+            toast.error("Failed to fetch types")
         } finally {
             setIsLoading(prev => ({...prev, types: false}))
         }
@@ -56,7 +65,6 @@ export function TypesAndAttributesTables() {
     const fetchAttributes = async () => {
         try {
             const response = await fetch(`http://localhost:8000/admin_paths/attributes`)
-
             const data = await response.json()
 
             if (response.ok) {
@@ -65,9 +73,8 @@ export function TypesAndAttributesTables() {
             } else {
                 toast.error(data.error)
             }
-
         } catch (error) {
-            toast("Failed to fetch attributes")
+            toast.error("Failed to fetch attributes")
         } finally {
             setIsLoading(prev => ({...prev, attributes: false}))
         }
@@ -93,7 +100,7 @@ export function TypesAndAttributesTables() {
                 toast.error(data.error)
             }
         } catch (error) {
-            toast("Failed to create type destructive")
+            toast.error("Failed to create type")
         }
     }
 
@@ -117,49 +124,48 @@ export function TypesAndAttributesTables() {
                 toast.error(data.error)
             }
         } catch (error) {
-            toast("Failed to create attribute destructive")
+            toast.error("Failed to create attribute")
         }
     }
 
-    const handleDeleteType = async (id: number) => {
+    const handleDeleteType = (id: number) => {
+        setConfirmDialog({isOpen: true, id, itemType: 'type'})
+    }
+
+    const handleDeleteAttribute = (id: number) => {
+        setConfirmDialog({isOpen: true, id, itemType: 'attribute'})
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!confirmDialog.id) return
+
         try {
-            const response = await fetch(`http://localhost:8000/admin_paths/types/delete`, {
+            const endpoint = confirmDialog.itemType === 'type'
+                ? `http://localhost:8000/admin_paths/types/delete`
+                : `http://localhost:8000/admin_paths/attributes/delete`
+
+            const response = await fetch(endpoint, {
                 method: 'DELETE',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({id})
+                body: JSON.stringify({id: confirmDialog.id})
             })
 
             const data = await response.json()
 
             if (response.ok) {
-                await fetchTypes()
+                if (confirmDialog.itemType === 'type') {
+                    await fetchTypes()
+                } else {
+                    await fetchAttributes()
+                }
                 toast.success(data.message)
             } else {
                 toast.error(data.error)
             }
         } catch (error) {
-            toast("Failed to delete type destructive")
-        }
-    }
-
-    const handleDeleteAttribute = async (id: number) => {
-        try {
-            const response = await fetch(`http://localhost:8000/admin_paths/attributes/delete`, {
-                method: 'DELETE',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({id})
-            })
-
-            const data = await response.json()
-
-            if (response.ok) {
-                await fetchAttributes()
-                toast.success(data.message)
-            } else {
-                toast.error(data.error)
-            }
-        } catch (error) {
-            toast("Failed to delete attribute destructive")
+            toast.error(`Failed to delete ${confirmDialog.itemType}`)
+        } finally {
+            setConfirmDialog({isOpen: false, id: null, itemType: 'type'})
         }
     }
 
@@ -241,7 +247,7 @@ export function TypesAndAttributesTables() {
                                 </DialogHeader>
                                 <form onSubmit={handleCreateAttribute} className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="attribute-name">Nazwa atrybuty</Label>
+                                        <Label htmlFor="attribute-name">Nazwa atrybutu</Label>
                                         <Input
                                             id="attribute-name"
                                             value={newAttribute}
@@ -249,7 +255,7 @@ export function TypesAndAttributesTables() {
                                             required
                                         />
                                     </div>
-                                    <Button type="submit">Dodaj atrybuty</Button>
+                                    <Button type="submit">Dodaj atrybut</Button>
                                 </form>
                             </DialogContent>
                         </Dialog>
@@ -282,6 +288,25 @@ export function TypesAndAttributesTables() {
                     </CardContent>
                 </Card>
             </div>
+
+            <Dialog open={confirmDialog.isOpen}
+                    onOpenChange={(isOpen) => !isOpen && setConfirmDialog({isOpen: false, id: null, itemType: 'type'})}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Potwierdź usunięcie</DialogTitle>
+                    </DialogHeader>
+                    <p>Czy na pewno chcesz usunąć ten {confirmDialog.itemType === 'type' ? 'typ' : 'atrybut'}? Ta
+                        operacja jest nieodwracalna.</p>
+                    <div className="flex justify-end space-x-2">
+                        <Button variant="outline" onClick={() => setConfirmDialog({
+                            isOpen: false,
+                            id: null,
+                            itemType: 'type'
+                        })}>Anuluj</Button>
+                        <Button variant="destructive" onClick={handleConfirmDelete}>Usuń</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
