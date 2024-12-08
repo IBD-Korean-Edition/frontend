@@ -1,14 +1,14 @@
 'use client'
 
-import {useEffect, useState} from 'react'
-import {Button} from "@/components/ui/button"
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
-import {Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger} from "@/components/ui/dialog"
-import {Input} from "@/components/ui/input"
-import {Label} from "@/components/ui/label"
-import {Building, DoorClosed, GraduationCap, Package, Plus, Trash2} from 'lucide-react'
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
-import {toast} from "sonner"
+import { useEffect, useState } from 'react'
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Building, DoorClosed, GraduationCap, Package, Plus, Trash2 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "sonner"
 
 interface Item {
     id: number;
@@ -33,11 +33,33 @@ interface Attribute {
     attribute_name: string;
 }
 
+interface Faculty {
+    id: number,
+    name: string,
+    admin_id: number
+}
+
+interface Building {
+    id: number,
+    name: string,
+    faculty: string,
+}
+
+interface Room {
+    id: number,
+    number: number,
+    type: boolean
+}
+
 export function ItemManagement() {
     const [items, setItems] = useState<Item[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [types, setTypes] = useState<Type[]>([])
     const [attributes, setAttributes] = useState<Attribute[]>([])
+    const [faculties, setFaculties] = useState<Faculty[]>([])
+    const [buildings, setBuildings] = useState<Building[]>([])
+    const [rooms, setRooms] = useState<Room[]>([])
+    const [isLoading, setIsLoading] = useState({ faculties: false, buildings: false })
     const [newItem, setNewItem] = useState({
         name: '',
         amount: 0,
@@ -49,12 +71,13 @@ export function ItemManagement() {
         faculty: '',
         building: '',
     })
-    const [confirmDialog, setConfirmDialog] = useState({isOpen: false, itemId: null as number | null});
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemId: null as number | null });
 
     useEffect(() => {
         fetchItems()
         fetchTypes()
         fetchAttributes()
+        fetchFaculties()
     }, [])
 
     const fetchItems = async () => {
@@ -82,6 +105,65 @@ export function ItemManagement() {
             console.error('Error fetching items:', error)
         }
     }
+
+    const fetchFaculties = async () => {
+        setIsLoading(prev => ({ ...prev, faculties: true }))
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/get_all_faculty`)
+            const data = await response.json()
+            if (response.ok) {
+                setFaculties(data.faculties)
+                toast.success('Faculties fetched successfully')
+            } else {
+                toast.error(data.error)
+            }
+        } catch (error) {
+            console.error('Error fetching faculties:', error)
+            toast.error('Failed to fetch faculties')
+        } finally {
+            setIsLoading(prev => ({ ...prev, faculties: false }))
+        }
+    }
+
+    const fetchBuildings = async (facultyName: string) => {
+        setIsLoading(prev => ({ ...prev, buildings: true }))
+        try {
+            console.log("Faculty Name: ", facultyName)
+            const response = await fetch(`http://localhost:8000/admin_paths/get_buildings_by_faculty/${facultyName}`)
+            const data = await response.json()
+            if (response.ok) {
+                setBuildings(data.buildings)
+                toast.success('Buildings fetched successfully')
+            } else {
+                toast.error(data.error)
+            }
+        } catch (error) {
+            console.error('Error fetching buildings:', error)
+            toast.error('Failed to fetch buildings')
+        } finally {
+            setIsLoading(prev => ({ ...prev, buildings: false }))
+        }
+    }
+
+    const fetchRooms = async (buildingName: string) => {
+        try {
+            const response = await fetch(`http://localhost:8000/admin_paths/get_rooms_by_building/${buildingName}`)
+            const data = await response.json()
+            if (response.ok) {
+                // Filtrowanie tylko pokoi, które mają type: false
+                const availableRooms = data.rooms.filter((room: Room) => room.type === false)
+                setRooms(availableRooms) // Ustawienie dostępnych pokoi
+                toast.success('Rooms fetched successfully')
+            } else {
+                toast.error(data.error)
+            }
+        } catch (error) {
+            console.error('Error fetching rooms:', error)
+            toast.error('Failed to fetch rooms')
+        }
+    }
+    
+    
 
     const fetchTypes = async () => {
         try {
@@ -114,6 +196,11 @@ export function ItemManagement() {
         }
     }
 
+    const handleBuildingChange = (buildingName: string) => {
+        setNewItem(prev => ({ ...prev, building: buildingName, building_number: buildingName }))
+        fetchRooms(buildingName)  // Fetch rooms after selecting building
+    }
+
     const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault()
         if (validateItem(newItem)) {
@@ -139,7 +226,6 @@ export function ItemManagement() {
                 const data = await response.json()
 
                 if (response.ok) {
-
                     await fetchItems()
                     setNewItem({
                         name: '', amount: 0, room_id: 0, room_number: '', building_number: '',
@@ -148,7 +234,7 @@ export function ItemManagement() {
                     setIsDialogOpen(false)
                     toast.success(data.message)
 
-                }else {
+                } else {
                     toast.error(data.error)
                 }
 
@@ -164,7 +250,7 @@ export function ItemManagement() {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement> | {
         target: { name: string; value: string }
     }) => {
-        const {name, value} = e.target
+        const { name, value } = e.target
         setNewItem(prev => ({
             ...prev,
             [name]: name === 'amount' ? parseInt(value) || 0 : value
@@ -172,7 +258,7 @@ export function ItemManagement() {
     }
 
     const handleDeleteItem = async (id: number) => {
-        setConfirmDialog({isOpen: true, itemId: id});
+        setConfirmDialog({ isOpen: true, itemId: id });
     }
 
     const handleConfirmDelete = async () => {
@@ -193,7 +279,7 @@ export function ItemManagement() {
             console.error('Error deleting item:', error);
             toast.error('Failed to delete item. Please try again.');
         } finally {
-            setConfirmDialog({isOpen: false, itemId: null});
+            setConfirmDialog({ isOpen: false, itemId: null });
         }
     }
 
@@ -216,7 +302,7 @@ export function ItemManagement() {
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <Button className="gap-2">
-                            <Plus className="h-4 w-4"/>
+                            <Plus className="h-4 w-4" />
                             Dodaj Przedmiot
                         </Button>
                     </DialogTrigger>
@@ -228,34 +314,72 @@ export function ItemManagement() {
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nazwa Przedmiotu</Label>
                                 <Input id="name" name="name" value={newItem.name} onChange={handleInputChange}
-                                       required/>
+                                    required />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="amount">Ilość</Label>
                                 <Input id="amount" name="amount" type="number" value={newItem.amount}
-                                       onChange={handleInputChange} required min="1"/>
+                                    onChange={handleInputChange} required min="1" />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="building_number">Numer Budynku</Label>
-                                <Input id="building_number" name="building_number" value={newItem.building_number}
-                                       onChange={handleInputChange} required/>
+                                <Select 
+                                    name="building_number" 
+                                    value={newItem.building} 
+                                    onValueChange={(buildingName) => {
+                                        handleBuildingChange(buildingName);  // Aktualizowanie stanu po wybraniu budynku
+                                        fetchRooms(buildingName);  // Wywołanie fetchRooms po wybraniu budynku
+                                    }} 
+                                    disabled={!newItem.faculty}  // Zablokowanie wyboru budynku, jeśli nie wybrano wydziału
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Wybierz budynek" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {buildings.map((building) => (
+                                            <SelectItem key={building.id} value={building.name}>
+                                                {building.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
+
                             <div className="space-y-2">
-                                <Label htmlFor="room_number">Numer Pokoju</Label>
-                                <Input id="room_number" name="room_number" value={newItem.room_number}
-                                       onChange={handleInputChange} required/>
+                            <Label htmlFor="room_number">Numer Pokoju</Label>
+                            <Select
+                                name="room_number"
+                                value={newItem.room_number}
+                                onValueChange={(value) => {
+                                    handleInputChange({
+                                        target: { name: 'room_number', value }
+                                    });
+                                }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Wybierz pokój" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {rooms.map((room) => (
+                                            <SelectItem key={room.id} value={String(room.number)}>
+                                                {room.number}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="type">Typ</Label>
                                 <Select name="type"
-                                        onValueChange={(value) => handleInputChange({target: {name: 'type', value}})}>
+                                    onValueChange={(value) => handleInputChange({ target: { name: 'type', value } })}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Wybierz typ"/>
+                                        <SelectValue placeholder="Wybierz typ" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {types.map((type) => (
                                             <SelectItem key={type.id}
-                                                        value={type.type_name}>{type.type_name}</SelectItem>
+                                                value={type.type_name}>{type.type_name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -269,20 +393,35 @@ export function ItemManagement() {
                                     }
                                 })}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Wybierz atrybut"/>
+                                        <SelectValue placeholder="Wybierz atrybut" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {attributes.map((attr) => (
                                             <SelectItem key={attr.id}
-                                                        value={attr.attribute_name}>{attr.attribute_name}</SelectItem>
+                                                value={attr.attribute_name}>{attr.attribute_name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="faculty">Wydział</Label>
-                                <Input id="faculty" name="faculty" value={newItem.faculty} onChange={handleInputChange}
-                                       required/>
+                                <Select name="faculty" value={newItem.faculty} onValueChange={(value) => {
+                                    handleInputChange({
+                                        target: { name: 'faculty', value }
+                                    });
+                                    fetchBuildings(value); // Wywołanie funkcji po wybraniu wydziału
+                                }}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Wybierz wydział" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {faculties.map((faculty) => (
+                                            <SelectItem key={faculty.id} value={faculty.name}>
+                                                {faculty.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <Button type="submit">Dodaj Przedmiot</Button>
                         </form>
@@ -306,35 +445,35 @@ export function ItemManagement() {
                     {items.map((item) => (
                         <TableRow key={item.id}>
                             <TableCell>
-                <span className="flex items-center gap-2">
-                  <Package className="h-4 w-4"/>
-                    {item.name}
-                </span>
+                                <span className="flex items-center gap-2">
+                                    <Package className="h-4 w-4" />
+                                    {item.name}
+                                </span>
                             </TableCell>
                             <TableCell>{item.amount}</TableCell>
                             <TableCell>
-                <span className="flex items-center gap-2">
-                  <DoorClosed className="h-4 w-4"/>
-                    {item.room_number}
-                </span>
+                                <span className="flex items-center gap-2">
+                                    <DoorClosed className="h-4 w-4" />
+                                    {item.room_number}
+                                </span>
                             </TableCell>
                             <TableCell>
-                <span className="flex items-center gap-2">
-                  <Building className="h-4 w-4"/>
-                    {item.building}
-                </span>
+                                <span className="flex items-center gap-2">
+                                    <Building className="h-4 w-4" />
+                                    {item.building}
+                                </span>
                             </TableCell>
                             <TableCell>
-                <span className="flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4"/>
-                    {item.faculty}
-                </span>
+                                <span className="flex items-center gap-2">
+                                    <GraduationCap className="h-4 w-4" />
+                                    {item.faculty}
+                                </span>
                             </TableCell>
                             <TableCell>{item.type}</TableCell>
                             <TableCell>{item.attribute}</TableCell>
                             <TableCell className="text-right">
                                 <Button variant="destructive" size="icon" onClick={() => handleDeleteItem(item.id)}>
-                                    <Trash2 className="h-4 w-4"/>
+                                    <Trash2 className="h-4 w-4" />
                                 </Button>
                             </TableCell>
                         </TableRow>
@@ -342,7 +481,7 @@ export function ItemManagement() {
                 </TableBody>
             </Table>
             <Dialog open={confirmDialog.isOpen}
-                    onOpenChange={(isOpen) => !isOpen && setConfirmDialog({isOpen: false, itemId: null})}>
+                onOpenChange={(isOpen) => !isOpen && setConfirmDialog({ isOpen: false, itemId: null })}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Potwierdź usunięcie</DialogTitle>
@@ -350,7 +489,7 @@ export function ItemManagement() {
                     <p>Czy na pewno chcesz usunąć ten przedmiot? Ta operacja jest nieodwracalna.</p>
                     <div className="flex justify-end space-x-2">
                         <Button variant="outline"
-                                onClick={() => setConfirmDialog({isOpen: false, itemId: null})}>Anuluj</Button>
+                            onClick={() => setConfirmDialog({ isOpen: false, itemId: null })}>Anuluj</Button>
                         <Button variant="destructive" onClick={handleConfirmDelete}>Usuń</Button>
                     </div>
                 </DialogContent>
@@ -358,4 +497,3 @@ export function ItemManagement() {
         </div>
     )
 }
-

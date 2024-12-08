@@ -120,14 +120,17 @@ export function AdminReturnsManagement() {
                     }),
                 });
             } else {
+                
                 const item = confirmDialog.data as ReservedItem;
+                console.log("Item id: ", item.item_id)
                 response = await fetch(`http://localhost:8000/admin_paths/return_item`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        id: item.item_id,
+                        id: item.id,
+                        item_id: item.item_id,
                         reserved_by: item.student_id
                     }),
                 });
