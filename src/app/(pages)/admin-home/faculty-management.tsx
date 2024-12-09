@@ -269,6 +269,7 @@ export function FacultyManagement() {
     };
 
     const handleBuildingSelect = (building: Building) => {
+        setRooms([]);
         setSelectedBuilding(building);
     };
 

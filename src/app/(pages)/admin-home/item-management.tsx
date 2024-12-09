@@ -322,6 +322,26 @@ export function ItemManagement() {
                                     onChange={handleInputChange} required min="1" />
                             </div>
                             <div className="space-y-2">
+                                <Label htmlFor="faculty">Wydział</Label>
+                                <Select name="faculty" value={newItem.faculty} onValueChange={(value) => {
+                                    handleInputChange({
+                                        target: { name: 'faculty', value }
+                                    });
+                                    fetchBuildings(value); // Wywołanie funkcji po wybraniu wydziału
+                                }}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Wybierz wydział" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {faculties.map((faculty) => (
+                                            <SelectItem key={faculty.id} value={faculty.name}>
+                                                {faculty.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
                                 <Label htmlFor="building_number">Numer Budynku</Label>
                                 <Select 
                                     name="building_number" 
@@ -399,26 +419,6 @@ export function ItemManagement() {
                                         {attributes.map((attr) => (
                                             <SelectItem key={attr.id}
                                                 value={attr.attribute_name}>{attr.attribute_name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="faculty">Wydział</Label>
-                                <Select name="faculty" value={newItem.faculty} onValueChange={(value) => {
-                                    handleInputChange({
-                                        target: { name: 'faculty', value }
-                                    });
-                                    fetchBuildings(value); // Wywołanie funkcji po wybraniu wydziału
-                                }}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Wybierz wydział" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {faculties.map((faculty) => (
-                                            <SelectItem key={faculty.id} value={faculty.name}>
-                                                {faculty.name}
-                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
